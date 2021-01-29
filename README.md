@@ -1,0 +1,1 @@
+FastAPI RESTful API for training machine learning models used for predicting cryptocurrency prices
