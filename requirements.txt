@@ -1,2 +1,13 @@
+apscheduler
 fastapi
+lightgbm
+numpy
+pandas
+pycoingecko
+scikit-learn
+scipy
+statsmodels
+tpot
+tsfresh
 uvicorn
+xgboost
