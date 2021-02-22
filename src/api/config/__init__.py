@@ -1,11 +1,14 @@
 from fastapi import FastAPI
 
+from .environment import check_environment_variables
 from .routers import register_routers
 from .schedule import model_training, schedule_jobs
 
 
 def create_app():
-    # Comment this line to skip the scheduling of api operations when running application in debug mode
+    # Comment these 2 lines to skip the environment variable check and scheduling of api operations when running
+    # application in debug mode
+    check_environment_variables()
     schedule_jobs()
 
     app = FastAPI()

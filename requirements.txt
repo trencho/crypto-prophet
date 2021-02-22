@@ -1,11 +1,13 @@
 apscheduler
 fastapi
 lightgbm
+matplotlib
 numpy
 pandas
 pycoingecko
 scikit-learn
 scipy
+seaborn
 statsmodels
 tpot
 tsfresh
