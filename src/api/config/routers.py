@@ -1,6 +1,5 @@
-__all__ = []
+from api.routers.forecast import forecast_router
 
 
 def register_routers(app):
-    for router in __all__:
-        app.include_router(globals()[router], prefix='/api/v1')
+    app.include_router(forecast_router, prefix='/api/v1')
