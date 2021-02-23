@@ -1,5 +1,6 @@
 apscheduler
 fastapi
+pygithub
 lightgbm
 matplotlib
 numpy

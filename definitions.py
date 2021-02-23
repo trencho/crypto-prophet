@@ -14,9 +14,12 @@ RESULTS_PATH = path.join(ROOT_DIR, 'results')
 RESULTS_ERRORS_PATH = path.join(RESULTS_PATH, 'errors')
 RESULTS_PREDICTIONS_PATH = path.join(RESULTS_PATH, 'predictions')
 
+app_name_env = 'APP_NAME'
+
 github_token_env = 'GITHUB_TOKEN'
 
 environment_variables = [
+    app_name_env,
     github_token_env
 ]
 
