@@ -50,6 +50,9 @@ def generate_time_features(target):
     features = DataFrame()
     features['month'] = target.index.month
     features['day'] = target.index.day
+    features['hour'] = target.index.hour
+    features['minute'] = target.index.minute
+    features['second'] = target.index.second
     features['weekOfYear'] = Int64Index(target.index.isocalendar().week)
     features['dayOfWeek'] = target.index.dayofweek
     features['dayOfYear'] = target.index.dayofyear

@@ -14,7 +14,7 @@ def mean_absolute_percentage_error(y_true, y_predicted):
     return None if isinf(mape) or isnan(mape) else mape
 
 
-def save_errors(cryptocurrency_symbol, model_name, y_true, y_predicted):
+def save_errors(coin_symbol, model_name, y_true, y_predicted):
     dataframe = DataFrame({
         'Mean Absolute Error': [mean_absolute_error(y_true, y_predicted)],
         'Mean Absolute Percentage Error': [mean_absolute_percentage_error(y_true, y_predicted)],
@@ -22,12 +22,11 @@ def save_errors(cryptocurrency_symbol, model_name, y_true, y_predicted):
         'Root Mean Squared Error': [sqrt(mean_squared_error(y_true, y_predicted))]
     }, columns=['Mean Absolute Error', 'Mean Absolute Percentage Error', 'Mean Squared Error',
                 'Root Mean Squared Error'])
-    dataframe.to_csv(path.join(RESULTS_ERRORS_PATH, 'data', cryptocurrency_symbol, model_name, 'error.csv'),
-                     index=False)
+    dataframe.to_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin_symbol, model_name, 'error.csv'), index=False)
 
     return mean_absolute_error(y_true, y_predicted)
 
 
-def save_results(cryptocurrency_symbol, model_name, dataframe):
-    dataframe.to_csv(
-        path.join(RESULTS_PREDICTIONS_PATH, 'data', cryptocurrency_symbol, model_name, 'prediction.csv'))
+def save_results(coin_symbol, model_name, dataframe):
+    dataframe.to_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin_symbol, model_name, 'prediction.csv'),
+                     index=False)

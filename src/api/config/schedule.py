@@ -3,11 +3,12 @@ from datetime import datetime
 from os import environ, path, walk
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from pandas import DataFrame
-from pandas import read_csv
+from pandas import DataFrame, json_normalize, read_csv
 from pycoingecko import CoinGeckoAPI
 
 from definitions import DATA_EXTERNAL_PATH, ROOT_DIR, app_name_env
+from modeling import train_coin_models
+from preparation import trim_dataframe
 from .git import append_commit_files, merge_csv_files, update_git_files
 
 scheduler = BackgroundScheduler()
@@ -39,13 +40,27 @@ def data_dump():
 
 @scheduler.scheduled_job(trigger='cron', day=1)
 def model_training():
-    pass
+    coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv'))
+    for coin in coin_list:
+        train_coin_models(coin)
 
 
 @scheduler.scheduled_job(trigger='cron', hour=0)
 def update_coin_info():
     coin_gecko = CoinGeckoAPI()
-    DataFrame(coin_gecko.get_coins_list()).to_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv'), index=False)
+    coin_list = coin_gecko.get_coins_list()
+    json_normalize(coin_list).to_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv'), index=False)
+    for coin in coin_list:
+        updated_coin_data = coin_gecko.get_coin_market_chart_by_id(coin['id'], 'usd', 1)
+        updated_coin_dataframe = DataFrame(updated_coin_data, columns=['time', 'value'])
+        trim_dataframe(updated_coin_dataframe, 'time')
+        coin_dataframe = read_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'))
+        last_timestamp = coin_dataframe['time'].iloc[-1]
+        updated_coin_dataframe.drop(
+            index=updated_coin_dataframe.loc[updated_coin_dataframe['time'] < last_timestamp].index, inplace=True,
+            errors='ignore')
+        coin_dataframe.append(updated_coin_dataframe, ignore_index=True).to_csv(
+            path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'), index=False)
 
 
 def schedule_jobs():

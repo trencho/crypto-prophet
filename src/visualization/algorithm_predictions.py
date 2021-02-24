@@ -10,21 +10,19 @@ from .handle_plot import save_plot
 filterwarnings(action='once')
 
 
-def draw_predictions(cryptocurrency):
-    dataframe_algorithms = DataFrame(columns=['algorithm', cryptocurrency['symbol']])
+def draw_predictions(coin):
+    dataframe_algorithms = DataFrame(columns=['algorithm', coin['symbol']])
     for algorithm in regression_models:
-        dataframe_errors = read_csv(
-            path.join(RESULTS_ERRORS_PATH, 'data', cryptocurrency['symbol'], algorithm,
-                      'error.csv'))
+        dataframe_errors = read_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], algorithm, 'error.csv'))
         dataframe_algorithms = dataframe_algorithms.append(
             [{
                 'algorithm': algorithm,
-                cryptocurrency['symbol']: dataframe_errors.iloc[0]['Mean Absolute Error']
+                coin['symbol']: dataframe_errors.iloc[0]['Mean Absolute Error']
             }], ignore_index=True)
 
-    algorithm_index = dataframe_algorithms[cryptocurrency['symbol']].idxmin()
+    algorithm_index = dataframe_algorithms[coin['symbol']].idxmin()
     dataframe_predictions = read_csv(
-        path.join(RESULTS_PREDICTIONS_PATH, 'data', cryptocurrency['symbol'],
+        path.join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
                   dataframe_algorithms.iloc[algorithm_index]['algorithm'], 'prediction.csv'), index_col='time')
 
     x = to_datetime(dataframe_predictions.index).normalize()
@@ -40,13 +38,13 @@ def draw_predictions(cryptocurrency):
     # ax (left Y axis)
     ax.set_xlabel('Dates', fontsize=22)
     ax.tick_params(axis='x', rotation=0, labelsize=18)
-    ax.set_ylabel(f'{cryptocurrency["name"]} values', fontsize=22)
+    ax.set_ylabel(f'{coin["name"]} values', fontsize=22)
     ax.tick_params(axis='y', rotation=0)
-    ax.set_title(f'{cryptocurrency["name"]} predictions', fontsize=22)
+    ax.set_title(f'{coin["name"]} predictions', fontsize=22)
     ax.grid(alpha=.4)
     ax.legend(fontsize=16)
 
     plt.gcf().autofmt_xdate()
 
-    file_path = path.join(RESULTS_PREDICTIONS_PATH, 'plots', cryptocurrency['symbol'])
+    file_path = path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol'])
     save_plot(fig, plt, file_path, 'prediction')

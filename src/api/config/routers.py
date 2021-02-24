@@ -1,7 +1,9 @@
+from api.routers.coins import coins_router
 from api.routers.forecast import forecast_router
 
 __all__ = [
-    'forecast_router',
+    'coins_router',
+    'forecast_router'
 ]
 
 
