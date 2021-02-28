@@ -4,6 +4,7 @@ pygithub
 lightgbm
 matplotlib
 numpy
+orjson
 pandas
 pycoingecko
 scikit-learn
