@@ -21,9 +21,9 @@ def draw_predictions(coin):
             }], ignore_index=True)
 
     algorithm_index = dataframe_algorithms[coin['symbol']].idxmin()
-    dataframe_predictions = read_csv(
-        path.join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
-                  dataframe_algorithms.iloc[algorithm_index]['algorithm'], 'prediction.csv'), index_col='time')
+    dataframe_predictions = read_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
+                                               dataframe_algorithms.iloc[algorithm_index]['algorithm'],
+                                               'prediction.csv'), index_col='time')
 
     x = to_datetime(dataframe_predictions.index).normalize()
     y1 = dataframe_predictions['Actual']
@@ -46,5 +46,4 @@ def draw_predictions(coin):
 
     plt.gcf().autofmt_xdate()
 
-    file_path = path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol'])
-    save_plot(fig, plt, file_path, 'prediction')
+    save_plot(fig, plt, path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')

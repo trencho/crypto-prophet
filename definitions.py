@@ -18,6 +18,10 @@ app_name_env = 'APP_NAME'
 
 github_token_env = 'GITHUB_TOKEN'
 
+coins = [
+    'ethereum'
+]
+
 environment_variables = [
     app_name_env,
     github_token_env

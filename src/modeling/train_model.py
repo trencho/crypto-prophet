@@ -15,9 +15,9 @@ from visualization import draw_errors, draw_predictions
 from .process_results import save_errors, save_results
 
 
-def split_dataframe(dataframe, coin_symbol, selected_features=None):
+def split_dataframe(dataframe, selected_features=None):
     x = value_scaling(dataframe)
-    y = dataframe[coin_symbol]
+    y = dataframe['value']
 
     x = previous_value_overwrite(x)
     y.drop(y.tail(1).index, inplace=True)
@@ -89,16 +89,16 @@ def save_best_regression_model(coin_symbol, best_model):
 
 
 def generate_regression_model(dataframe, coin_symbol):
-    dataframe = dataframe.join(generate_features(dataframe[coin_symbol]), how='inner')
+    dataframe = dataframe.join(generate_features(dataframe['value']), how='inner')
     encode_categorical_data(dataframe)
     validation_split = len(dataframe) * 3 // 4
 
     train_dataframe = dataframe.iloc[:validation_split]
-    x_train, y_train = split_dataframe(train_dataframe, coin_symbol)
+    x_train, y_train = split_dataframe(train_dataframe)
     selected_features = list(x_train.columns)
 
     test_dataframe = dataframe.iloc[validation_split:]
-    x_test, y_test = split_dataframe(test_dataframe, coin_symbol, selected_features)
+    x_test, y_test = split_dataframe(test_dataframe, selected_features)
 
     save_selected_features(coin_symbol, selected_features)
 
@@ -137,7 +137,7 @@ def generate_regression_model(dataframe, coin_symbol):
         remove_model_lock(coin_symbol, model_name)
 
     if best_model is not None:
-        x_train, y_train = split_dataframe(dataframe, coin_symbol, selected_features)
+        x_train, y_train = split_dataframe(dataframe, selected_features)
         best_model.train(x_train, y_train)
         save_best_regression_model(coin_symbol, best_model.reg)
 
@@ -146,7 +146,7 @@ def train_regression_model(coin):
     try:
         dataframe = read_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'))
         dataframe.set_index('time', inplace=True)
-        dataframe.index = to_datetime(dataframe.index, unit='s')
+        dataframe.index = to_datetime(dataframe.index / 10 ** 3, unit='s')
         generate_regression_model(dataframe, coin['symbol'])
         draw_errors(coin)
         draw_predictions(coin)
@@ -155,4 +155,4 @@ def train_regression_model(coin):
 
 
 def train_coin_models(coin):
-    Thread(target=train_regression_model, args=coin).start()
+    Thread(target=train_regression_model, args=(coin,)).start()

@@ -28,5 +28,4 @@ def save_errors(coin_symbol, model_name, y_true, y_predicted):
 
 
 def save_results(coin_symbol, model_name, dataframe):
-    dataframe.to_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin_symbol, model_name, 'prediction.csv'),
-                     index=False)
+    dataframe.to_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin_symbol, model_name, 'prediction.csv'))

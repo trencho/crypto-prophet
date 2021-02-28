@@ -67,5 +67,4 @@ def draw_errors(coin):
         plt.xticks(dataframe_algorithms.index, dataframe_algorithms['algorithm'], horizontalalignment='center',
                    fontsize=22, rotation=30)
 
-        file_path = path.join(RESULTS_ERRORS_PATH, 'plots', coin['symbol'])
-        save_plot(fig, plt, file_path, error_type)
+        save_plot(fig, plt, path.join(RESULTS_ERRORS_PATH, 'plots', coin['symbol']), error_type)
