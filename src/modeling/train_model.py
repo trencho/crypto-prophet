@@ -29,8 +29,7 @@ def split_dataframe(dataframe, selected_features=None):
 
 
 def save_selected_features(coin_symbol, selected_features):
-    if not path.exists(path.join(MODELS_PATH, coin_symbol)):
-        makedirs(path.join(MODELS_PATH, coin_symbol))
+    makedirs(path.join(MODELS_PATH, coin_symbol), exist_ok=True)
     with open(path.join(MODELS_PATH, coin_symbol, 'selected_features.pkl'), 'wb') as out_file:
         pickle_dump(selected_features, out_file, HIGHEST_PROTOCOL)
 
@@ -43,13 +42,11 @@ def read_model(coin_symbol, algorithm, error_type):
 
 
 def create_models_path(coin_symbol, model_name):
-    if not path.exists(path.join(MODELS_PATH, coin_symbol, model_name)):
-        makedirs(path.join(MODELS_PATH, coin_symbol, model_name))
+    makedirs(path.join(MODELS_PATH, coin_symbol, model_name), exist_ok=True)
 
 
 def create_results_path(results_path, coin_symbol, model_name):
-    if not path.exists(path.join(results_path, 'data', coin_symbol, model_name)):
-        makedirs(path.join(results_path, 'data', coin_symbol, model_name))
+    makedirs(path.join(results_path, 'data', coin_symbol, model_name), exist_ok=True)
 
 
 def create_paths(coin_symbol, model_name):

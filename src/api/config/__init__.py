@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 
-from .environment import check_environment_variables
+from .environment import check_environment_variables, fetch_data
 from .routers import register_routers
-from .schedule import fetch_coin_info, model_training, schedule_jobs
+from .schedule import model_training, schedule_jobs
 
 
 def create_app():
@@ -15,7 +15,7 @@ def create_app():
 
     register_routers(app)
 
-    fetch_coin_info()
+    fetch_data()
 
     # Comment this line to skip training regression models for all available locations during application startup
     model_training()
