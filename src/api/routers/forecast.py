@@ -59,6 +59,6 @@ def retrieve_forecast_timestamp(timestamp):
     if timestamp < next_hour_timestamp:
         message = ('Cannot forecast pollutant because the timestamp is in the past. Send a GET request to the history '
                    'endpoint for past values.')
-        return ORJSONResponse(jsonable_encoder(f'error_message={message}'), status_code=status.HTTP_400_BAD_REQUEST)
+        return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_400_BAD_REQUEST)
 
     return closest_hour(datetime.fromtimestamp(timestamp)).timestamp()

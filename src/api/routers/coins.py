@@ -16,7 +16,7 @@ async def fetch_coins():
                           status_code=status.HTTP_200_OK)
 
 
-@coins_router.get('/coins/{coin_id}')
+@coins_router.get('/coins/{coin_id}/')
 async def fetch_coin(coin_id: str = None):
     coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
     for coin in coin_list:
@@ -24,4 +24,4 @@ async def fetch_coin(coin_id: str = None):
             return ORJSONResponse(jsonable_encoder(coin), status_code=status.HTTP_200_OK)
 
     message = 'Cannot return data because the coin is not found or is invalid.'
-    return ORJSONResponse(jsonable_encoder(f'error_message={message}'), status_code=status.HTTP_404_NOT_FOUND)
+    return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_404_NOT_FOUND)
