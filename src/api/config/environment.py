@@ -1,5 +1,6 @@
 from datetime import datetime
-from os import environ, makedirs, path
+from os import environ, makedirs
+from os.path import join as path_join
 from time import sleep
 
 from pandas import DataFrame, json_normalize
@@ -23,7 +24,7 @@ def fetch_data():
     coin_gecko = CoinGeckoAPI()
     coin_list = coin_gecko.get_coins_list()
     sleep(1)
-    json_normalize(coin_list).to_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv'), index=False)
+    json_normalize(coin_list).to_csv(path_join(DATA_EXTERNAL_PATH, 'coin_list.csv'), index=False)
     for coin in coin_list:
         if coin['id'] not in coins:
             continue
@@ -34,7 +35,7 @@ def fetch_data():
             current_hour(current_datetime).timestamp())
         coin_dataframe = DataFrame(coin_data['prices'], columns=['time', 'value'])
         trim_dataframe(coin_dataframe, 'time')
-        makedirs(path.join(DATA_EXTERNAL_PATH, coin['symbol']), exist_ok=True)
-        coin_dataframe.to_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'), index=False)
+        makedirs(path_join(DATA_EXTERNAL_PATH, coin['symbol']), exist_ok=True)
+        coin_dataframe.to_csv(path_join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'), index=False)
 
         sleep(1)

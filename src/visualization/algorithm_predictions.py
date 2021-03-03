@@ -1,4 +1,4 @@
-from os import path
+from os.path import join as path_join
 from warnings import filterwarnings
 
 from matplotlib import pyplot as plt
@@ -13,7 +13,7 @@ filterwarnings(action='once')
 def draw_predictions(coin):
     dataframe_algorithms = DataFrame(columns=['algorithm', coin['symbol']])
     for algorithm in regression_models:
-        dataframe_errors = read_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], algorithm, 'error.csv'))
+        dataframe_errors = read_csv(path_join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], algorithm, 'error.csv'))
         dataframe_algorithms = dataframe_algorithms.append(
             [{
                 'algorithm': algorithm,
@@ -21,7 +21,7 @@ def draw_predictions(coin):
             }], ignore_index=True)
 
     algorithm_index = dataframe_algorithms[coin['symbol']].idxmin()
-    dataframe_predictions = read_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
+    dataframe_predictions = read_csv(path_join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
                                                dataframe_algorithms.iloc[algorithm_index]['algorithm'],
                                                'prediction.csv'), index_col='time')
 
@@ -46,4 +46,4 @@ def draw_predictions(coin):
 
     plt.gcf().autofmt_xdate()
 
-    save_plot(fig, plt, path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')
+    save_plot(fig, plt, path_join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')

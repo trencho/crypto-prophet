@@ -1,5 +1,5 @@
 from math import isinf, isnan
-from os import path
+from os.path import join as path_join
 
 from numpy import abs, array, mean, sqrt
 from pandas import DataFrame
@@ -22,10 +22,10 @@ def save_errors(coin_symbol, model_name, y_true, y_predicted):
         'Root Mean Squared Error': [sqrt(mean_squared_error(y_true, y_predicted))]
     }, columns=['Mean Absolute Error', 'Mean Absolute Percentage Error', 'Mean Squared Error',
                 'Root Mean Squared Error'])
-    dataframe.to_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin_symbol, model_name, 'error.csv'), index=False)
+    dataframe.to_csv(path_join(RESULTS_ERRORS_PATH, 'data', coin_symbol, model_name, 'error.csv'), index=False)
 
     return mean_absolute_error(y_true, y_predicted)
 
 
 def save_results(coin_symbol, model_name, dataframe):
-    dataframe.to_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin_symbol, model_name, 'prediction.csv'))
+    dataframe.to_csv(path_join(RESULTS_PREDICTIONS_PATH, 'data', coin_symbol, model_name, 'prediction.csv'))

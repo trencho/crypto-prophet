@@ -1,6 +1,7 @@
 from datetime import datetime
 from io import BytesIO, StringIO
-from os import environ, path
+from os import environ
+from os.path import join as path_join, relpath
 from traceback import format_exc
 
 from github import Github, InputGitTreeElement
@@ -13,8 +14,8 @@ g = Github(environ.get(github_token_env))
 
 def append_commit_files(file_list, file_names, root, data, file):
     file_list.append(data)
-    rel_dir = path.relpath(root, ROOT_DIR)
-    rel_file = path.join(rel_dir, file).replace('\\', '/')
+    rel_dir = relpath(root, ROOT_DIR)
+    rel_file = path_join(rel_dir, file).replace('\\', '/')
     file_names.append(rel_file)
 
 

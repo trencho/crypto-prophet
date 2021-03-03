@@ -1,6 +1,7 @@
 from base64 import b64encode
 from datetime import datetime
-from os import environ, path, walk
+from os import environ, walk
+from os.path import join as path_join
 from time import sleep
 
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -23,7 +24,7 @@ def data_dump():
     file_names = []
     for root, directories, files in walk(ROOT_DIR):
         for file in files:
-            file_path = path.join(root, file)
+            file_path = path_join(root, file)
             if file.endswith('.csv'):
                 data = read_csv(file_path).to_csv(index=False)
                 data = merge_csv_files(repo_name, file_path, data)
@@ -41,7 +42,7 @@ def data_dump():
 
 @scheduler.scheduled_job(trigger='cron', day=1)
 def model_training():
-    coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
+    coin_list = read_csv(path_join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
     for coin in coin_list:
         if coin['id'] in coins:
             train_coin_models(coin)
@@ -52,7 +53,7 @@ def update_coin_info():
     coin_gecko = CoinGeckoAPI()
     coin_list = coin_gecko.get_coins_list()
     sleep(1)
-    json_normalize(coin_list).to_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv'), index=False)
+    json_normalize(coin_list).to_csv(path_join(DATA_EXTERNAL_PATH, 'coin_list.csv'), index=False)
     for coin in coin_list:
         if coin['id'] not in coins:
             continue
@@ -60,13 +61,13 @@ def update_coin_info():
         updated_coin_data = coin_gecko.get_coin_market_chart_by_id(coin['id'], 'usd', 1)
         updated_coin_dataframe = DataFrame(updated_coin_data['prices'], columns=['time', 'value'])
         trim_dataframe(updated_coin_dataframe, 'time')
-        coin_dataframe = read_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'))
+        coin_dataframe = read_csv(path_join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'))
         last_timestamp = coin_dataframe['time'].iloc[-1]
         updated_coin_dataframe.drop(
             index=updated_coin_dataframe.loc[updated_coin_dataframe['time'] < last_timestamp].index, inplace=True,
             errors='ignore')
         coin_dataframe.append(updated_coin_dataframe, ignore_index=True).to_csv(
-            path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'), index=False)
+            path_join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'), index=False)
 
         sleep(1)
 
