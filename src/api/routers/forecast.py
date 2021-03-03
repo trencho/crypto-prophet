@@ -7,36 +7,58 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import ORJSONResponse
 from pandas import read_csv, to_datetime
 
-from definitions import DATA_EXTERNAL_PATH, MODELS_PATH
+from definitions import DATA_EXTERNAL_PATH, MODELS_PATH, coins
 from modeling import train_coin_models
+from preparation import check_coin
 from processing import closest_hour, current_hour, next_hour, recursive_forecast
 
 forecast_router = APIRouter(tags=['forecast'])
 
 
-@forecast_router.get('/forecast/{coin_id}')
+def append_forecast_data(coin, forecast_value, forecast_results):
+    forecast_results.append({'coin': coin, 'value': float(forecast_value)})
+
+
+@forecast_router.get('/forecast/')
 async def forecast(coin_id: str = None, timestamp: int = None):
-    pass
+    if coin_id is not None and coin_id not in coins:
+        message = 'Value cannot be predicted because the coin is not found or is invalid.'
+        return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_400_BAD_REQUEST)
+
+    timestamp = retrieve_forecast_timestamp(timestamp)
+    if isinstance(timestamp, ORJSONResponse):
+        return timestamp
+
+    forecast_results = []
+    if coin_id is None:
+        for coin_id in coins:
+            coin = check_coin(coin_id)
+            forecast_value = forecast_coin(coin, timestamp)
+            append_forecast_data(coin_id, forecast_value, forecast_results)
+
+        return ORJSONResponse(jsonable_encoder(forecast_results), status_code=status.HTTP_200_OK)
+
+    coin = check_coin(coin_id)
+    forecast_value = forecast_coin(coin, timestamp)
+    append_forecast_data(coin_id, forecast_value, forecast_results)
+    return ORJSONResponse(jsonable_encoder(forecast_results), status_code=status.HTTP_200_OK)
 
 
 def load_regression_model(coin):
-    if not path.exists(
-            path.join(MODELS_PATH, coin['symbol'], 'best_regression_model.pkl')):
+    if not path.exists(path.join(MODELS_PATH, coin['symbol'], 'best_regression_model.pkl')):
         train_coin_models(coin)
         return None
 
-    with open(path.join(MODELS_PATH, coin['symbol'], 'best_regression_model.pkl'),
-              'rb') as in_file:
+    with open(path.join(MODELS_PATH, coin['symbol'], 'best_regression_model.pkl'), 'rb') as in_file:
         model = pickle_load(in_file)
 
-    with open(path.join(MODELS_PATH, coin['symbol'], 'selected_features.pkl'),
-              'rb') as in_file:
+    with open(path.join(MODELS_PATH, coin['symbol'], 'selected_features.pkl'), 'rb') as in_file:
         model_features = pickle_load(in_file)
 
     return model, model_features
 
 
-def forecast_city_sensor(coin, timestamp):
+def forecast_coin(coin, timestamp):
     load_model = load_regression_model(coin)
     if load_model is None:
         return load_model

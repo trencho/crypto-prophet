@@ -6,6 +6,7 @@ from fastapi.responses import ORJSONResponse
 from pandas import read_csv
 
 from definitions import DATA_EXTERNAL_PATH
+from preparation import check_coin
 
 coins_router = APIRouter(tags=['coins'])
 
@@ -18,10 +19,9 @@ async def fetch_coins():
 
 @coins_router.get('/coins/{coin_id}/')
 async def fetch_coin(coin_id: str = None):
-    coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
-    for coin in coin_list:
-        if coin['id'] == coin_id:
-            return ORJSONResponse(jsonable_encoder(coin), status_code=status.HTTP_200_OK)
+    coin = check_coin(coin_id)
+    if coin is None:
+        message = 'Cannot return data because the coin is not found or is invalid.'
+        return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_404_NOT_FOUND)
 
-    message = 'Cannot return data because the coin is not found or is invalid.'
-    return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_404_NOT_FOUND)
+    return ORJSONResponse(jsonable_encoder(coin), status_code=status.HTTP_200_OK)
