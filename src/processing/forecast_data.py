@@ -3,7 +3,7 @@ from pandas import concat as pandas_concat, DataFrame, date_range, Series, Timed
 from .feature_generation import encode_categorical_data, generate_features, generate_lag_features, \
     generate_time_features
 
-FORECAST_PERIOD = '1H'
+FORECAST_PERIOD = '1D'
 FORECAST_STEPS = 1
 
 
@@ -32,18 +32,18 @@ def direct_forecast(y, model, params=None, lags=FORECAST_STEPS, n_steps=FORECAST
         features = lags_features.join(time_features, how='outer').dropna()
 
         # Build target to be ahead of the features built by the desired number of steps (the for loop index)
-        target = y[y.index >= features.index[0] + Timedelta(hours=step)]
+        target = y[y.index >= features.index[0] + Timedelta(days=step)]
         assert len(features.index) == len(target.index)
 
         return features, target
 
     params = {} if params is None else params
     forecast_values = []
-    forecast_range = date_range(y.index[-1] + Timedelta(hours=1), periods=n_steps, freq=step)
+    forecast_range = date_range(y.index[-1] + Timedelta(days=1), periods=n_steps, freq=step)
     forecast_features, _ = one_step_features(y.index[-1], 0)
 
     for s in range(1, n_steps + 1):
-        last_date = y.index[-1] - Timedelta(hours=s)
+        last_date = y.index[-1] - Timedelta(days=s)
         features, target = one_step_features(last_date, s)
 
         model.set_params(**params)
@@ -73,7 +73,7 @@ def recursive_forecast(y, model, model_features, n_steps=FORECAST_STEPS, step=FO
     """
 
     # Get the dates to forecast
-    last_date = y.index[-1] + Timedelta(hours=1)
+    last_date = y.index[-1] + Timedelta(days=1)
     forecast_range = date_range(last_date, periods=n_steps, freq=step)
 
     forecasted_values = []

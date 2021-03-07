@@ -16,7 +16,10 @@ forecast_router = APIRouter(tags=['forecast'])
 
 
 def append_forecast_data(coin, forecast_value, forecast_results):
-    forecast_results.append({'coin': coin, 'value': float(forecast_value)})
+    forecast_results.append({
+        'coin': coin,
+        'value': forecast_value if forecast_value is None else float(forecast_value)
+    })
 
 
 @forecast_router.get('/forecast/')
@@ -66,7 +69,8 @@ def forecast_coin(coin, timestamp):
     model, model_features = load_model
 
     dataframe = read_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'))
-    dataframe.set_index(to_datetime(dataframe['time'] / 10 ** 3, unit='s'), inplace=True)
+    dataframe.set_index('time', inplace=True)
+    dataframe.index = to_datetime(dataframe.index / 10 ** 3, unit='s')
 
     current_datetime = current_hour(datetime.now())
     date_time = datetime.fromtimestamp(timestamp)
@@ -79,7 +83,7 @@ def retrieve_forecast_timestamp(timestamp):
     next_hour_timestamp = int(datetime.timestamp(next_hour_time))
     timestamp = timestamp or next_hour_timestamp
     if timestamp < next_hour_timestamp:
-        message = ('Cannot forecast pollutant because the timestamp is in the past. Send a GET request to the history '
+        message = ('Cannot forecast coin because the timestamp is in the past. Send a GET request to the history '
                    'endpoint for past values.')
         return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_400_BAD_REQUEST)
 
