@@ -15,8 +15,9 @@ from visualization import draw_errors, draw_predictions
 from .process_results import save_errors, save_results
 
 
-def split_dataframe(dataframe, selected_features=None):
-    x = value_scaling(dataframe)
+def split_dataframe(dataframe, target, selected_features=None):
+    x = dataframe.drop(columns=target, errors='ignore')
+    x = value_scaling(x)
     y = dataframe['value']
 
     x = previous_value_overwrite(x)
@@ -91,11 +92,11 @@ def generate_regression_model(dataframe, coin_symbol):
     validation_split = len(dataframe) * 3 // 4
 
     train_dataframe = dataframe.iloc[:validation_split]
-    x_train, y_train = split_dataframe(train_dataframe)
+    x_train, y_train = split_dataframe(train_dataframe, 'value')
     selected_features = list(x_train.columns)
 
     test_dataframe = dataframe.iloc[validation_split:]
-    x_test, y_test = split_dataframe(test_dataframe, selected_features)
+    x_test, y_test = split_dataframe(test_dataframe, 'value', selected_features)
 
     save_selected_features(coin_symbol, selected_features)
 
@@ -134,7 +135,7 @@ def generate_regression_model(dataframe, coin_symbol):
         remove_model_lock(coin_symbol, model_name)
 
     if best_model is not None:
-        x_train, y_train = split_dataframe(dataframe, selected_features)
+        x_train, y_train = split_dataframe(dataframe, 'value', selected_features)
         best_model.train(x_train, y_train)
         save_best_regression_model(coin_symbol, best_model.reg)
 
