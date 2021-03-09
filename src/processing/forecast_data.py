@@ -83,12 +83,13 @@ def recursive_forecast(y, model, model_features, n_steps=FORECAST_STEPS, step=FO
         target = target.append(Series(index=[date], data=new_point))
 
         dataframe = generate_features(target)
-        dataframe = pandas_concat([dataframe,
-                                   DataFrame(columns=list(set(model_features) - set(list(dataframe.columns))))])
+        dataframe = pandas_concat(
+            [dataframe, DataFrame(columns=list(set(model_features) - set(list(dataframe.columns))))])
         encode_categorical_data(dataframe)
         dataframe = dataframe[model_features]
         dataframe = value_scaling(dataframe)
         predictions = model.predict(dataframe)
         forecasted_values.append(predictions[-1])
+        target.update(Series(forecasted_values[-1], index=[target.index[-1]]))
 
     return Series(forecasted_values, forecast_range)
