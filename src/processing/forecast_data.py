@@ -2,6 +2,7 @@ from pandas import concat as pandas_concat, DataFrame, date_range, Series, Timed
 
 from .feature_generation import encode_categorical_data, generate_features, generate_lag_features, \
     generate_time_features
+from .feature_scaling import value_scaling
 
 FORECAST_PERIOD = '1D'
 FORECAST_STEPS = 1
@@ -89,6 +90,7 @@ def recursive_forecast(y, model, model_features, n_steps=FORECAST_STEPS, step=FO
                                    DataFrame(columns=list(set(model_features) - set(list(dataframe.columns))))])
         encode_categorical_data(dataframe)
         dataframe = dataframe[model_features]
+        dataframe = value_scaling(dataframe)
         predictions = model.predict(dataframe)
         forecasted_values.append(predictions[-1])
 
