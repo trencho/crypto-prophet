@@ -30,8 +30,8 @@ def data_dump():
                 data = merge_csv_files(repo_name, file_path, data)
                 append_commit_files(file_list, file_names, root, data, file)
             elif file.endswith('.png'):
-                with open(file_path, 'rb') as input_file:
-                    data = b64encode(input_file.read())
+                with open(file_path, 'rb') as in_file:
+                    data = b64encode(in_file.read())
                 append_commit_files(file_list, file_names, root, data, file)
 
     if file_list:
