@@ -14,19 +14,24 @@ RESULTS_PATH = path.join(ROOT_DIR, 'results')
 RESULTS_ERRORS_PATH = path.join(RESULTS_PATH, 'errors')
 RESULTS_PREDICTIONS_PATH = path.join(RESULTS_PATH, 'predictions')
 
-app_name_env = 'APP_NAME'
+app_env = 'APP_ENV'
+app_name = 'APP_NAME'
 
-github_token_env = 'GITHUB_TOKEN'
+github_token = 'GITHUB_TOKEN'
+
+environment_variables = [
+    app_env,
+    app_name,
+    github_token
+]
+
+app_dev = 'development'
+app_prod = 'production'
 
 coins = [
     'bitcoin',
     'ethereum',
     'ravencoin'
-]
-
-environment_variables = [
-    app_name_env,
-    github_token_env
 ]
 
 regression_models = {
@@ -35,7 +40,7 @@ regression_models = {
     'LightGBMRegressionModel': 'LightGBM',
     'LinearRegressionModel': 'Linear',
     'MLPRegressionModel': 'Multilayer Perceptron',
-    'RandomForestRegressionModel': 'Random Forest',
+    # 'RandomForestRegressionModel': 'Random Forest',
     'SupportVectorRegressionModel': 'Support Vector',
     # 'TPOTRegressionModel': 'TPOT',
     'XGBoostRegressionModel': 'XGBoost'

@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pandas import DataFrame, json_normalize, read_csv
 from pycoingecko import CoinGeckoAPI
 
-from definitions import DATA_EXTERNAL_PATH, ROOT_DIR, app_name_env, coins
+from definitions import DATA_EXTERNAL_PATH, ROOT_DIR, app_name, coins
 from modeling import train_coin_models
 from preparation import trim_dataframe
 from .git import append_commit_files, merge_csv_files, update_git_files
@@ -18,7 +18,7 @@ scheduler = BackgroundScheduler()
 
 @scheduler.scheduled_job(trigger='cron', day=1)
 def data_dump():
-    repo_name = environ[app_name_env]
+    repo_name = environ[app_name]
 
     file_list = []
     file_names = []
