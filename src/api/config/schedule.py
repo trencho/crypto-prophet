@@ -9,7 +9,7 @@ from pandas import DataFrame, json_normalize, read_csv
 from pycoingecko import CoinGeckoAPI
 
 from definitions import coins, DATA_EXTERNAL_PATH, repo_name, ROOT_PATH
-from modeling import train_coin_models
+from modeling import train_regression_model
 from preparation import trim_dataframe
 from .git import append_commit_files, merge_csv_files, update_git_files
 
@@ -40,12 +40,12 @@ def data_dump():
         update_git_files(file_names, file_list, repository_name, branch, commit_message)
 
 
-@scheduler.scheduled_job(trigger='cron', day=1)
+@scheduler.scheduled_job(trigger='cron', day=2)
 def model_training():
     coin_list = read_csv(path_join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
     for coin in coin_list:
         if coin['id'] in coins:
-            train_coin_models(coin)
+            train_regression_model(coin)
 
 
 @scheduler.scheduled_job(trigger='cron', hour=0)

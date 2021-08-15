@@ -71,6 +71,7 @@ def check_coin_lock(coin_symbol):
 
 
 def create_coin_lock(coin_symbol):
+    makedirs(path.join(MODELS_PATH, coin_symbol), exist_ok=True)
     with open(path.join(MODELS_PATH, coin_symbol, lock_file), 'w'):
         pass
 
@@ -87,7 +88,10 @@ def hyper_parameter_tuning(model, x_train, y_train, coin_symbol):
 
 
 def remove_coin_lock(coin_symbol):
-    os_remove(path.join(MODELS_PATH, coin_symbol, lock_file))
+    try:
+        os_remove(path.join(MODELS_PATH, coin_symbol, lock_file))
+    except OSError:
+        pass
 
 
 def check_best_regression_model(coin_symbol):

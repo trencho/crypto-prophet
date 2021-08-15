@@ -1,3 +1,5 @@
+from threading import Thread
+
 from fastapi import FastAPI
 
 from .environment import check_environment_variables, fetch_data
@@ -18,6 +20,6 @@ def create_app():
     fetch_data()
 
     # Comment this line to skip training regression models for all available locations during application startup
-    model_training()
+    Thread(target=model_training, daemon=True).start()
 
     return app
