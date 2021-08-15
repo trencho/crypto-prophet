@@ -55,11 +55,9 @@ def draw_errors(coin):
                   color='firebrick', alpha=0.7, linewidth=40, label=coin["name"])
         ax.legend()
 
-        # Annotate Text
         for i, value in enumerate(dataframe_algorithms[coin['symbol']]):
             ax.text(i, value + 0.5, round(value, 1), fontsize=22, horizontalalignment='center')
 
-        # Title, Label, Ticks and Ylim
         ax.set_title(coin['symbol'], fontdict={'size': 22})
         ax.set_ylabel(error_type, fontsize=22)
         y_lim = dataframe_algorithms[coin['symbol']].max() + 10 - (dataframe_algorithms[coin['symbol']].max() % 10)

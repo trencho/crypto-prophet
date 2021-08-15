@@ -2,19 +2,19 @@ from datetime import datetime
 from io import BytesIO, StringIO
 from os import environ
 from os.path import join as path_join, relpath
-from traceback import format_exc
+from traceback import print_exc
 
 from github import Github, GithubException, InputGitTreeElement
 from pandas import read_csv
 
-from definitions import ROOT_DIR, github_token
+from definitions import github_token, ROOT_PATH
 
 g = Github(environ.get(github_token))
 
 
 def append_commit_files(file_list, file_names, root, data, file):
     file_list.append(data)
-    rel_dir = relpath(root, ROOT_DIR)
+    rel_dir = relpath(root, ROOT_PATH)
     rel_file = path_join(rel_dir, file).replace('\\', '/')
     file_names.append(rel_file)
 
@@ -27,7 +27,7 @@ def merge_csv_files(repo_name, file_name, data):
         repo_file_content = read_csv(BytesIO(repo_file.decoded_content))
         local_file_content = local_file_content.append(repo_file_content, ignore_index=True, sort=True)
     except GithubException:
-        print(format_exc())
+        print_exc()
     local_file_content.drop_duplicates(inplace=True)
     return local_file_content.to_csv(index=False)
 
@@ -44,10 +44,7 @@ def commit_git_files(repo, element_list, base_tree, master_sha, commit_message, 
                              master_ref)
             commit_git_files(repo, element_list[len(element_list) // 2:], base_tree, master_sha, commit_message,
                              master_ref)
-        else:
-            return format_exc()
-    finally:
-        return 'Update complete'
+        print_exc()
 
 
 def update_git_files(file_names, file_list, repo_name, branch,
@@ -67,4 +64,4 @@ def update_git_files(file_names, file_list, repo_name, branch,
             element = InputGitTreeElement(file_names[i], '100644', 'blob', sha=file_list[i].sha)
             element_list.append(element)
 
-    print(commit_git_files(repo, element_list, base_tree, master_sha, commit_message, master_ref))
+    commit_git_files(repo, element_list, base_tree, master_sha, commit_message, master_ref)

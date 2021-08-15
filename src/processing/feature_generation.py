@@ -26,7 +26,7 @@ def get_season(time):
 
 def encode_categorical_data(dataframe):
     obj_columns = dataframe.select_dtypes('object').columns
-    dataframe[obj_columns] = dataframe.select_dtypes('object').apply(lambda x: x.astype('category'))
+    dataframe[obj_columns] = dataframe[obj_columns].astype('category')
     cat_columns = dataframe.select_dtypes('category').columns
     dataframe[cat_columns] = dataframe[cat_columns].apply(lambda x: x.cat.codes)
 
@@ -101,5 +101,6 @@ def generate_time_series_features(dataframe, target):
 def generate_features(target):
     lag_features = generate_lag_features(target)
     time_features = generate_time_features(target)
+    features = lag_features.join(time_features, how='inner')
 
-    return lag_features.join(time_features, how='inner').dropna()
+    return features.dropna(axis='columns', how='all').dropna(axis='index', how='any')

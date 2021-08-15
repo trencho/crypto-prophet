@@ -1,38 +1,37 @@
-from os import path
-
-ROOT_DIR = path.dirname(path.abspath(__file__))
-
-DATA_PATH = path.join(ROOT_DIR, 'data')
-DATA_EXTERNAL_PATH = path.join(DATA_PATH, 'external')
-DATA_INTERIM_PATH = path.join(DATA_PATH, 'interim')
-DATA_PROCESSED_PATH = path.join(DATA_PATH, 'processed')
-DATA_RAW_PATH = path.join(DATA_PATH, 'raw')
-
-MODELS_PATH = path.join(ROOT_DIR, 'models')
-
-RESULTS_PATH = path.join(ROOT_DIR, 'results')
-RESULTS_ERRORS_PATH = path.join(RESULTS_PATH, 'errors')
-RESULTS_PREDICTIONS_PATH = path.join(RESULTS_PATH, 'predictions')
+from os import environ, path
 
 app_env = 'APP_ENV'
-app_name = 'APP_NAME'
 
 github_token = 'GITHUB_TOKEN'
 
+repo_name = 'REPO_NAME'
+
+volume_path = 'VOLUME_PATH'
+
 environment_variables = [
     app_env,
-    app_name,
-    github_token
+    github_token,
+    repo_name
 ]
+
+VOLUME_PATH = environ.get(volume_path, '')
+ROOT_PATH = VOLUME_PATH or path.dirname(path.abspath(__file__))
+
+DATA_PATH = path.join(ROOT_PATH, 'data')
+DATA_EXTERNAL_PATH = path.join(DATA_PATH, 'external')
+DATA_PROCESSED_PATH = path.join(DATA_PATH, 'processed')
+DATA_RAW_PATH = path.join(DATA_PATH, 'raw')
+
+MODELS_PATH = path.join(ROOT_PATH, 'models')
+
+RESULTS_PATH = path.join(ROOT_PATH, 'results')
+RESULTS_ERRORS_PATH = path.join(RESULTS_PATH, 'errors')
+RESULTS_PREDICTIONS_PATH = path.join(RESULTS_PATH, 'predictions')
 
 app_dev = 'development'
 app_prod = 'production'
 
-coins = [
-    'bitcoin',
-    'ethereum',
-    'ravencoin'
-]
+coins = ['bitcoin', 'ethereum', 'ravencoin']
 
 regression_models = {
     'DecisionTreeRegressionModel': 'Decision Tree',
@@ -45,3 +44,5 @@ regression_models = {
     # 'TPOTRegressionModel': 'TPOT',
     'XGBoostRegressionModel': 'XGBoost'
 }
+
+week_in_seconds = 604800

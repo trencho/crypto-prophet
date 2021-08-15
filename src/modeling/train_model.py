@@ -1,18 +1,28 @@
+from datetime import datetime
 from math import inf
 from os import cpu_count, makedirs, path, remove as os_remove
 from pickle import dump as pickle_dump, HIGHEST_PROTOCOL
 from threading import Thread
+from traceback import print_exc
 
 from pandas import DataFrame, read_csv, to_datetime
 from sklearn.model_selection import RandomizedSearchCV
 
 from definitions import DATA_EXTERNAL_PATH, MODELS_PATH, RESULTS_ERRORS_PATH, RESULTS_PREDICTIONS_PATH, \
-    regression_models
+    regression_models, week_in_seconds
 from models import make_model
-from processing import backward_elimination, generate_features, previous_value_overwrite, value_scaling, \
-    encode_categorical_data
+from processing import backward_elimination, current_hour, generate_features, value_scaling, encode_categorical_data
 from visualization import draw_errors, draw_predictions
 from .process_results import save_errors, save_results
+
+lock_file = '.lock'
+
+
+def previous_value_overwrite(dataframe):
+    dataframe = dataframe.shift(periods=-1, axis=0)
+    dataframe.drop(dataframe.tail(1).index, inplace=True)
+
+    return dataframe
 
 
 def split_dataframe(dataframe, target, selected_features=None):
@@ -56,17 +66,16 @@ def create_paths(coin_symbol, model_name):
     create_results_path(RESULTS_PREDICTIONS_PATH, coin_symbol, model_name)
 
 
-def check_model_lock(coin_symbol, model_name):
-    return path.exists(path.join(MODELS_PATH, coin_symbol, model_name, '.lock'))
+def check_coin_lock(coin_symbol):
+    return path.exists(path.join(MODELS_PATH, coin_symbol, lock_file))
 
 
-def create_model_lock(coin_symbol, model_name):
-    with open(path.join(MODELS_PATH, coin_symbol, model_name, '.lock'), 'w'):
+def create_coin_lock(coin_symbol):
+    with open(path.join(MODELS_PATH, coin_symbol, lock_file), 'w'):
         pass
 
 
 def hyper_parameter_tuning(model, x_train, y_train, coin_symbol):
-    # model_cv = GridSearchCV(model.reg, model.param_grid, n_jobs=cpu_count() // 2, cv=5)
     model_cv = RandomizedSearchCV(model.reg, model.param_grid, n_jobs=cpu_count() // 2, cv=5)
     model_cv.fit(x_train, y_train)
 
@@ -77,8 +86,18 @@ def hyper_parameter_tuning(model, x_train, y_train, coin_symbol):
     return model_cv.best_params_
 
 
-def remove_model_lock(coin_symbol, model_name):
-    os_remove(path.join(MODELS_PATH, coin_symbol, model_name, '.lock'))
+def remove_coin_lock(coin_symbol):
+    os_remove(path.join(MODELS_PATH, coin_symbol, lock_file))
+
+
+def check_best_regression_model(coin_symbol):
+    try:
+        last_modified = int(
+            path.getmtime(path.join(MODELS_PATH, coin_symbol, 'best_regression_model.pkl')))
+        if last_modified < int(datetime.timestamp(current_hour())) - week_in_seconds:
+            return True
+    except OSError:
+        return False
 
 
 def save_best_regression_model(coin_symbol, best_model):
@@ -111,10 +130,6 @@ def generate_regression_model(dataframe, coin_symbol):
             continue
 
         create_paths(coin_symbol, model_name)
-        is_model_locked = check_model_lock(coin_symbol, model_name)
-        if is_model_locked:
-            continue
-        create_model_lock(coin_symbol, model_name)
 
         model = make_model(model_name)
         params = hyper_parameter_tuning(model, x_train, y_train, coin_symbol)
@@ -132,8 +147,6 @@ def generate_regression_model(dataframe, coin_symbol):
             best_model = model
             best_model_error = model_error
 
-        remove_model_lock(coin_symbol, model_name)
-
     if best_model is not None:
         x_train, y_train = split_dataframe(dataframe, 'value', selected_features)
         best_model.train(x_train, y_train)
@@ -141,15 +154,20 @@ def generate_regression_model(dataframe, coin_symbol):
 
 
 def train_regression_model(coin):
+    if check_best_regression_model(coin['symbol']):
+        return
     try:
-        dataframe = read_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'))
-        dataframe.set_index('time', inplace=True)
+        dataframe = read_csv(path.join(DATA_EXTERNAL_PATH, coin['symbol'], 'data.csv'), index_col='time')
         dataframe.index = to_datetime(dataframe.index / 10 ** 3, unit='s')
+        if not check_coin_lock(coin['symbol']):
+            create_coin_lock(coin['symbol'])
         generate_regression_model(dataframe, coin['symbol'])
         draw_errors(coin)
         draw_predictions(coin)
-    except FileNotFoundError:
-        pass
+    except Exception:
+        print_exc()
+    finally:
+        remove_coin_lock(coin['symbol'])
 
 
 def train_coin_models(coin):

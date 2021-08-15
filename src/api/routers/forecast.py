@@ -73,7 +73,7 @@ def forecast_coin(coin, timestamp):
     dataframe.set_index('time', inplace=True)
     dataframe.index = to_datetime(dataframe.index / 10 ** 3, unit='s')
 
-    current_datetime = current_hour(datetime.now())
+    current_datetime = current_hour()
     date_time = datetime.fromtimestamp(timestamp)
     n_steps = ceil((date_time - current_datetime).total_seconds() / 86400)
     return recursive_forecast(dataframe['value'], model, model_features, n_steps).iloc[-1]

@@ -8,7 +8,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from pandas import DataFrame, json_normalize, read_csv
 from pycoingecko import CoinGeckoAPI
 
-from definitions import DATA_EXTERNAL_PATH, ROOT_DIR, app_name, coins
+from definitions import coins, DATA_EXTERNAL_PATH, repo_name, ROOT_PATH
 from modeling import train_coin_models
 from preparation import trim_dataframe
 from .git import append_commit_files, merge_csv_files, update_git_files
@@ -18,16 +18,16 @@ scheduler = BackgroundScheduler()
 
 @scheduler.scheduled_job(trigger='cron', day=1)
 def data_dump():
-    repo_name = environ[app_name]
+    repository_name = environ[repo_name]
 
     file_list = []
     file_names = []
-    for root, directories, files in walk(ROOT_DIR):
+    for root, directories, files in walk(ROOT_PATH):
         for file in files:
             file_path = path_join(root, file)
             if file.endswith('.csv'):
                 data = read_csv(file_path).to_csv(index=False)
-                data = merge_csv_files(repo_name, file_path, data)
+                data = merge_csv_files(repository_name, file_path, data)
                 append_commit_files(file_list, file_names, root, data, file)
             elif file.endswith('.png'):
                 with open(file_path, 'rb') as in_file:
@@ -37,7 +37,7 @@ def data_dump():
     if file_list:
         branch = 'master'
         commit_message = f'Scheduled data dump - {datetime.now().strftime("%H:%M:%S %d-%m-%Y")}'
-        update_git_files(file_names, file_list, repo_name, branch, commit_message)
+        update_git_files(file_names, file_list, repository_name, branch, commit_message)
 
 
 @scheduler.scheduled_job(trigger='cron', day=1)
