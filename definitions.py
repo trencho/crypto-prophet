@@ -35,7 +35,7 @@ coins = ['bitcoin', 'ethereum', 'ravencoin']
 
 regression_models = {
     'DecisionTreeRegressionModel': 'Decision Tree',
-    'DummyRegressionModel': 'Dummy',
+    # 'DummyRegressionModel': 'Dummy',
     'LightGBMRegressionModel': 'LightGBM',
     'LinearRegressionModel': 'Linear',
     'MLPRegressionModel': 'Multilayer Perceptron',
@@ -44,5 +44,3 @@ regression_models = {
     # 'TPOTRegressionModel': 'TPOT',
     'XGBoostRegressionModel': 'XGBoost'
 }
-
-week_in_seconds = 604800

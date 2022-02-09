@@ -1,15 +1,16 @@
-from datetime import date
+from datetime import date, datetime
 from warnings import catch_warnings, simplefilter
 
 from numpy import abs
-from pandas import DataFrame, Int64Index, Series
+from pandas import cut, DataFrame, Index, Series
 from statsmodels.tsa.stattools import pacf
 from tsfresh import extract_features, select_features
 from tsfresh.utilities.dataframe_functions import impute
 
 
-def get_season(time):
-    dummy_leap_year = 2000  # Dummy leap year to allow input 29-02-X (leap day)
+def get_season(time: datetime) -> str:
+    # Dummy leap year to allow input 29-02-X (leap day)
+    dummy_leap_year = 2000
 
     dt = time.date()
     dt = dt.replace(year=dummy_leap_year)
@@ -24,15 +25,15 @@ def get_season(time):
     return next(season for season, (start, end) in seasons if start <= dt <= end)
 
 
-def encode_categorical_data(dataframe):
+def encode_categorical_data(dataframe: DataFrame) -> None:
     obj_columns = dataframe.select_dtypes('object').columns
     dataframe[obj_columns] = dataframe[obj_columns].astype('category')
     cat_columns = dataframe.select_dtypes('category').columns
     dataframe[cat_columns] = dataframe[cat_columns].apply(lambda x: x.cat.codes)
 
 
-def generate_lag_features(target, lags=48):
-    partial = Series(data=pacf(target, nlags=lags))
+def generate_lag_features(target: Series, lags: int) -> DataFrame:
+    partial = Series(data=pacf(target, nlags=lags if lags < target.size // 2 else target.size // 2 - 1))
     lags = list(partial[abs(partial) >= 0.2].index)
 
     if 0 in lags:
@@ -46,11 +47,12 @@ def generate_lag_features(target, lags=48):
     return features
 
 
-def generate_time_features(target):
+def generate_time_features(target) -> DataFrame:
     features = DataFrame()
     features['month'] = target.index.month
     features['day'] = target.index.day
-    features['weekOfYear'] = Int64Index(target.index.isocalendar().week)
+    features['hour'] = target.index.hour
+    features['weekOfYear'] = Index(target.index.isocalendar().week, dtype='int64')
     features['dayOfWeek'] = target.index.dayofweek
     features['dayOfYear'] = target.index.dayofyear
     features['weekdayName'] = target.index.day_name()
@@ -66,13 +68,17 @@ def generate_time_features(target):
     features['isWeekend'] = target.index.to_series().apply(lambda x: 0 if x.dayofweek in (5, 6) else 1).values
     features['season'] = target.index.to_series().apply(get_season).values
 
+    bins = [0, 4, 8, 12, 16, 20, 24]
+    labels = ['Late Night', 'Early Morning', 'Morning', 'Noon', 'Eve', 'Night']
+    features['session'] = cut(features['hour'], bins=bins, labels=labels)
+
     features.set_index(target.index, inplace=True)
 
     return features
 
 
-def select_time_series_features(dataframe, target):
-    validation_split = len(dataframe) * 3 // 4
+def select_time_series_features(dataframe: DataFrame, target: str) -> DataFrame:
+    validation_split = len(dataframe.index) * 3 // 4
 
     train_x = dataframe.iloc[:validation_split].drop(columns=target)
     train_y = dataframe.iloc[:validation_split][target]
@@ -80,7 +86,7 @@ def select_time_series_features(dataframe, target):
     return select_features(train_x, train_y)
 
 
-def generate_time_series_features(dataframe, target):
+def generate_time_series_features(dataframe: DataFrame, target: str) -> DataFrame:
     y = dataframe[target]
     features = dataframe.drop(columns=target)
 
@@ -98,9 +104,9 @@ def generate_time_series_features(dataframe, target):
     return select_time_series_features(features, target)
 
 
-def generate_features(target):
-    lag_features = generate_lag_features(target)
+def generate_features(target: Series, lags: int = 24) -> DataFrame:
+    lag_features = generate_lag_features(target, lags)
     time_features = generate_time_features(target)
-    features = lag_features.join(time_features, how='inner')
+    features = time_features if len(lag_features.index) == 0 else lag_features.join(time_features, how='inner')
 
-    return features.dropna(axis='columns', how='all').dropna(axis='index', how='any')
+    return features.dropna(axis='columns', how='all')

@@ -7,11 +7,13 @@ numpy
 orjson
 pandas
 pycoingecko
+requests
 scikit-learn
 scipy
 seaborn
 statsmodels
 tpot
 tsfresh
+urllib3
 uvicorn
 xgboost

@@ -1,5 +1,4 @@
-from os.path import join as path_join
-from warnings import filterwarnings
+from os import path
 
 from matplotlib import pyplot as plt
 from pandas import DataFrame, read_csv, to_datetime
@@ -7,21 +6,16 @@ from pandas import DataFrame, read_csv, to_datetime
 from definitions import RESULTS_ERRORS_PATH, RESULTS_PREDICTIONS_PATH, regression_models
 from .handle_plot import save_plot
 
-filterwarnings(action='once')
-
 
 def draw_predictions(coin):
-    dataframe_algorithms = DataFrame(columns=['algorithm', coin['symbol']])
-    for algorithm in regression_models:
-        dataframe_errors = read_csv(path_join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], algorithm, 'error.csv'))
-        dataframe_algorithms = dataframe_algorithms.append(
-            [{
-                'algorithm': algorithm,
-                coin['symbol']: dataframe_errors.iloc[0]['Mean Absolute Error']
-            }], ignore_index=True)
+    data = []
+    for model_name in regression_models:
+        dataframe_errors = read_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], model_name, 'error.csv'))
+        data.append([model_name, dataframe_errors.iloc[0]['Mean Absolute Error']])
 
+    dataframe_algorithms = DataFrame(data, columns=['algorithm', coin['symbol']])
     algorithm_index = dataframe_algorithms[coin['symbol']].idxmin()
-    dataframe_predictions = read_csv(path_join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
+    dataframe_predictions = read_csv(path.join(RESULTS_PREDICTIONS_PATH, 'data', coin['symbol'],
                                                dataframe_algorithms.iloc[algorithm_index]['algorithm'],
                                                'prediction.csv'), index_col='time')
 
@@ -44,4 +38,4 @@ def draw_predictions(coin):
 
     plt.gcf().autofmt_xdate()
 
-    save_plot(fig, plt, path_join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')
+    save_plot(fig, plt, path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')

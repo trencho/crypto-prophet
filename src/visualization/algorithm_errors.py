@@ -1,17 +1,14 @@
-from os.path import join as path_join
-from warnings import filterwarnings
+from os import path
 
-import seaborn as sns
+import seaborn
 from matplotlib import pyplot as plt
 from pandas import DataFrame, read_csv
 
 from definitions import RESULTS_ERRORS_PATH, regression_models
 from .handle_plot import save_plot
 
-filterwarnings(action='once')
 
-
-def draw_errors(coin):
+def draw_errors(coin: dict) -> None:
     error_types = [
         'Mean Absolute Error',
         'Mean Absolute Percentage Error',
@@ -32,19 +29,16 @@ def draw_errors(coin):
     }
     plt.rcParams.update(params)
     plt.style.use('seaborn-whitegrid')
-    sns.set_style('white')
+    seaborn.set_style('white')
 
     for error_type in error_types:
-        dataframe_algorithms = DataFrame(columns=['algorithm', coin['symbol']])
-        for algorithm in regression_models:
-            dataframe_errors = read_csv(path_join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], algorithm, 'error.csv'))
-            dataframe_algorithms = dataframe_algorithms.append(
-                [{
-                    'algorithm': regression_models[algorithm],
-                    coin['symbol']: dataframe_errors.iloc[0][error_type]
-                }], ignore_index=True).dropna()
+        data = []
+        for model_name in regression_models:
+            dataframe_errors = read_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], model_name, 'error.csv'))
+            data.append([regression_models[model_name], dataframe_errors.iloc[0][error_type]])
 
-        if dataframe_algorithms.empty:
+        dataframe_algorithms = DataFrame(data, columns=['algorithm', coin['symbol']]).dropna()
+        if len(dataframe_algorithms.index) == 0:
             continue
 
         dataframe_algorithms.sort_values(by=coin['symbol'], ascending=False, inplace=True)
@@ -65,4 +59,4 @@ def draw_errors(coin):
         plt.xticks(dataframe_algorithms.index, dataframe_algorithms['algorithm'], horizontalalignment='center',
                    fontsize=22, rotation=30)
 
-        save_plot(fig, plt, path_join(RESULTS_ERRORS_PATH, 'plots', coin['symbol']), error_type)
+        save_plot(fig, plt, path.join(RESULTS_ERRORS_PATH, 'plots', coin['symbol']), error_type)

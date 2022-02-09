@@ -1,25 +1,25 @@
 from datetime import datetime
 
 
-def closest_hour(t):
-    return t.replace(microsecond=0, second=0, minute=0,
-                     hour=t.hour if t.minute <= 30 else 0 if t.hour == 23 else t.hour + 1)
+def closest_hour(t: datetime) -> datetime:
+    return t.replace(hour=t.hour if t.minute <= 30 else 0 if t.hour == 23 else t.hour + 1, minute=0, second=0,
+                     microsecond=0)
 
 
-def current_hour():
+def current_hour() -> datetime:
     t = datetime.now()
     return t.replace(hour=t.hour, minute=0, second=0, microsecond=0)
 
 
-def flatten_json(nested_json: dict, exclude=None):
+def flatten_json(nested_json: dict, exclude: list[str] = None) -> dict:
     """
     Flatten a list of nested dicts.
     """
     if exclude is None:
         exclude = ['']
-    out = dict()
+    out = {}
 
-    def flatten(x: (list, dict, str), name: str = '', exclude=exclude):
+    def flatten(x: (list, dict, str), name: str = '', exclude: list[str] = exclude) -> None:
         if type(x) is dict:
             for a in x:
                 if a not in exclude:
@@ -39,6 +39,6 @@ def flatten_json(nested_json: dict, exclude=None):
     return out
 
 
-def next_hour(t):
-    return t.replace(microsecond=0, second=0, minute=0, hour=0 if t.hour == 23 else t.hour + 1,
-                     day=t.day + 1 if t.hour == 23 else t.day)
+def next_hour(t: datetime) -> datetime:
+    return t.replace(day=t.day + 1 if t.hour == 23 else t.day, hour=0 if t.hour == 23 else t.hour + 1, minute=0,
+                     second=0, microsecond=0)
