@@ -1,16 +1,16 @@
 from base64 import b64encode
 from datetime import datetime
-from os import environ, path, walk
+from os import environ, path, remove, walk
 from time import sleep
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from pandas import DataFrame, json_normalize, read_csv
 from pycoingecko import CoinGeckoAPI
 
-from definitions import coins, DATA_EXTERNAL_PATH, repo_name, ROOT_PATH
+from definitions import coins, DATA_EXTERNAL_PATH, DATA_PATH, MODELS_PATH, repo_name
 from modeling import train_regression_model
 from preparation import trim_dataframe
-from .git import append_commit_files, merge_csv_files, update_git_files
+from .git import append_commit_files, create_archive, update_git_files
 
 scheduler = BackgroundScheduler()
 
@@ -18,26 +18,21 @@ scheduler = BackgroundScheduler()
 @scheduler.scheduled_job(trigger='cron', day='*/15')
 def dump_data() -> None:
     print('Started dumping data...')
-    repository_name = environ[repo_name]
 
-    file_list = []
-    file_names = []
-    for root, directories, files in walk(ROOT_PATH):
-        for file in files:
-            file_path = path.join(root, file)
-            if file.endswith('.csv'):
-                data = read_csv(file_path).to_csv(index=False)
-                data = merge_csv_files(repository_name, file_path, data)
-                append_commit_files(file_list, data, root, file, file_names)
-            elif file.endswith('.png'):
-                with open(file_path, 'rb') as in_file:
-                    data = b64encode(in_file.read())
-                append_commit_files(file_list, data, root, file, file_names)
+    file_list, file_names = [], []
+    for root, directories, files in walk(DATA_PATH):
+        if not directories and files:
+            file_path = f'{root}.zip'
+            create_archive(source=root, destination=file_path)
+            with open(file_path, 'rb') as in_file:
+                data = b64encode(in_file.read())
+            append_commit_files(file_list, data, path.dirname(path.abspath(root)), path.basename(file_path), file_names)
+            remove(file_path)
 
     if file_list:
         branch = 'master'
         commit_message = f'Scheduled data dump - {datetime.now().strftime("%H:%M:%S %d-%m-%Y")}'
-        update_git_files(file_list, file_names, repository_name, branch, commit_message)
+        update_git_files(file_list, file_names, environ[repo_name], branch, commit_message)
 
     print('Finished dumping data!')
 
@@ -45,6 +40,11 @@ def dump_data() -> None:
 @scheduler.scheduled_job(trigger='cron', minute='*/15')
 def model_training() -> None:
     print('Started training regression models...')
+
+    for file in [path.join(root, file) for root, directories, files in walk(MODELS_PATH) for file in files if
+                 file.endswith('.lock')]:
+        remove(path.join(MODELS_PATH, file))
+
     coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
     for coin in coin_list:
         if coin['id'] in coins:
@@ -56,6 +56,7 @@ def model_training() -> None:
 @scheduler.scheduled_job(trigger='cron', hour=0)
 def update_coin_info() -> None:
     print('Started fetching coins...')
+
     coin_gecko = CoinGeckoAPI()
     coin_list = coin_gecko.get_coins_list()
     sleep(1)

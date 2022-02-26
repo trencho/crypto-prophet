@@ -2,7 +2,7 @@ from datetime import date, datetime
 from warnings import catch_warnings, simplefilter
 
 from numpy import abs
-from pandas import cut, DataFrame, Index, Series
+from pandas import DataFrame, Index, Series
 from statsmodels.tsa.stattools import pacf
 from tsfresh import extract_features, select_features
 from tsfresh.utilities.dataframe_functions import impute
@@ -68,10 +68,6 @@ def generate_time_features(target) -> DataFrame:
     features['isWeekend'] = target.index.to_series().apply(lambda x: 0 if x.dayofweek in (5, 6) else 1).values
     features['season'] = target.index.to_series().apply(get_season).values
 
-    bins = [0, 4, 8, 12, 16, 20, 24]
-    labels = ['Late Night', 'Early Morning', 'Morning', 'Noon', 'Eve', 'Night']
-    features['session'] = cut(features['hour'], bins=bins, labels=labels)
-
     features.set_index(target.index, inplace=True)
 
     return features
@@ -109,4 +105,4 @@ def generate_features(target: Series, lags: int = 24) -> DataFrame:
     time_features = generate_time_features(target)
     features = time_features if len(lag_features.index) == 0 else lag_features.join(time_features, how='inner')
 
-    return features.dropna(axis='columns', how='all')
+    return features.dropna(axis='columns', how='all').dropna(axis='index', how='any')

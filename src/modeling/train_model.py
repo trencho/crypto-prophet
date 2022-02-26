@@ -89,14 +89,14 @@ def hyper_parameter_tuning(model: BaseRegressionModel, x_train, y_train, coin_sy
     return model_cv.best_params_
 
 
-def remove_coin_lock(coin_symbol):
+def remove_coin_lock(coin_symbol: str) -> None:
     try:
         remove(path.join(MODELS_PATH, coin_symbol, lock_file))
     except OSError:
         pass
 
 
-def check_best_regression_model(coin_symbol):
+def check_best_regression_model(coin_symbol: str) -> bool:
     try:
         last_modified = int(
             path.getmtime(path.join(MODELS_PATH, coin_symbol, 'best_regression_model.pkl')))
@@ -107,7 +107,7 @@ def check_best_regression_model(coin_symbol):
         return False
 
 
-def save_best_regression_model(coin_symbol, best_model):
+def save_best_regression_model(coin_symbol: str, best_model: BaseRegressionModel) -> None:
     with open(path.join(MODELS_PATH, coin_symbol, 'best_regression_model.pkl'), 'wb') as out_file:
         dump(best_model, out_file, HIGHEST_PROTOCOL)
 

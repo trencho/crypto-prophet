@@ -145,6 +145,6 @@ def recursive_forecast(coin_symbol: str, model: BaseRegressionModel, model_featu
             forecasted_values.append(predictions[-1])
         except ValueError:
             forecasted_values.append(nan)
-        target.update(Series(forecasted_values[-1], index=[target.index[-1]]))
+        target.update(Series(forecasted_values[-1], [target.index[-1]]))
 
     return Series(forecasted_values, forecast_range)
