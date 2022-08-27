@@ -35,12 +35,10 @@ coins = ['bitcoin', 'ethereum', 'ravencoin']
 
 regression_models = {
     'DecisionTreeRegressionModel': 'Decision Tree',
-    # 'DummyRegressionModel': 'Dummy',
     'LightGBMRegressionModel': 'LightGBM',
     'LinearRegressionModel': 'Linear',
     'MLPRegressionModel': 'Multilayer Perceptron',
     # 'RandomForestRegressionModel': 'Random Forest',
     'SupportVectorRegressionModel': 'Support Vector',
-    # 'TPOTRegressionModel': 'TPOT',
     'XGBoostRegressionModel': 'XGBoost'
 }
