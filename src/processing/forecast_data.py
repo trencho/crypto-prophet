@@ -16,12 +16,12 @@ FORECAST_PERIOD = '1D'
 FORECAST_STEPS = 30
 
 
-def fetch_forecast_result() -> dict:
+async def fetch_forecast_result() -> dict:
     forecast_result = {}
     coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')
     for coin in coin_list:
         if coin['id'] in coins:
-            if (predictions := forecast_coin(coin['symbol'])) is None:
+            if (predictions := await forecast_coin(coin['symbol'])) is None:
                 continue
 
             for index, value in predictions.items():
@@ -32,16 +32,16 @@ def fetch_forecast_result() -> dict:
     return forecast_result
 
 
-def forecast_coin(coin_symbol: str) -> Optional[Series]:
-    if (load_model := load_regression_model(coin_symbol)) is None:
+async def forecast_coin(coin_symbol: str) -> Optional[Series]:
+    if (load_model := await load_regression_model(coin_symbol)) is None:
         return None
 
     model, model_features = load_model
 
-    return recursive_forecast(coin_symbol, model, model_features)
+    return await recursive_forecast(coin_symbol, model, model_features)
 
 
-def load_regression_model(coin_symbol: str):
+async def load_regression_model(coin_symbol: str):
     if not path.exists(path.join(MODELS_PATH, coin_symbol, 'best_regression_model.pkl')):
         return None
 
@@ -54,7 +54,7 @@ def load_regression_model(coin_symbol: str):
     return model, model_features
 
 
-def direct_forecast(y, model, lags=FORECAST_STEPS, n_steps=FORECAST_STEPS, step=FORECAST_PERIOD) -> Series:
+async def direct_forecast(y, model, lags=FORECAST_STEPS, n_steps=FORECAST_STEPS, step=FORECAST_PERIOD) -> Series:
     """Multistep direct forecasting using a machine learning model to forecast each time period ahead
 
     Parameters
@@ -70,11 +70,11 @@ def direct_forecast(y, model, lags=FORECAST_STEPS, n_steps=FORECAST_STEPS, step=
     forecast_values: pd.Series with forecasted values indexed by forecast horizon dates
     """
 
-    def one_step_features(date, step):
+    async def one_step_features(date, step):
         # Features must be obtained using data lagged by the desired number of steps (the for loop index)
         tmp = y[y.index <= date]
-        lags_features = generate_lag_features(tmp, lags)
-        time_features = generate_time_features(tmp)
+        lags_features = await generate_lag_features(tmp, lags)
+        time_features = await generate_time_features(tmp)
         features = lags_features.join(time_features, how='inner').dropna()
 
         # Build target to be ahead of the features built by the desired number of steps (the for loop index)
@@ -85,11 +85,11 @@ def direct_forecast(y, model, lags=FORECAST_STEPS, n_steps=FORECAST_STEPS, step=
 
     forecast_values = []
     forecast_range = date_range(y.index[-1] + Timedelta(days=1), periods=n_steps, freq=step)
-    forecast_features, _ = one_step_features(y.index[-1], 0)
+    forecast_features, _ = await one_step_features(y.index[-1], 0)
 
     for s in range(1, n_steps + 1):
         last_date = y.index[-1] - Timedelta(days=s)
-        features, target = one_step_features(last_date, s)
+        features, target = await one_step_features(last_date, s)
 
         model.train(features, target)
 
@@ -100,9 +100,9 @@ def direct_forecast(y, model, lags=FORECAST_STEPS, n_steps=FORECAST_STEPS, step=
     return Series(forecast_values, forecast_range)
 
 
-def recursive_forecast(coin_symbol: str, model: BaseRegressionModel, model_features: list, lags: int = FORECAST_STEPS,
-                       n_steps: int = FORECAST_STEPS,
-                       step: int = FORECAST_PERIOD) -> Series:
+async def recursive_forecast(coin_symbol: str, model: BaseRegressionModel, model_features: list,
+                             lags: int = FORECAST_STEPS, n_steps: int = FORECAST_STEPS,
+                             step: int = FORECAST_PERIOD) -> Series:
     """Multistep recursive forecasting using the input time series data and a pre-trained machine learning model
 
     Parameters
@@ -135,12 +135,12 @@ def recursive_forecast(coin_symbol: str, model: BaseRegressionModel, model_featu
         new_point = forecasted_values[-1] if len(forecasted_values) > 0 else 0.0
         target = concat([target, Series(new_point, [date])])
 
-        features = generate_features(target, lags)
+        features = await generate_features(target, lags)
         features = concat([features, DataFrame(columns=list(set(model_features) - set(list(features.columns))))])
-        encode_categorical_data(features)
+        await encode_categorical_data(features)
         features = features[model_features]
         try:
-            features = value_scaling(features)
+            features = await value_scaling(features)
             predictions = model.predict(features)
             forecasted_values.append(predictions[-1])
         except ValueError:

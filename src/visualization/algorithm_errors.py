@@ -8,7 +8,7 @@ from definitions import RESULTS_ERRORS_PATH, regression_models
 from .handle_plot import save_plot
 
 
-def draw_errors(coin: dict) -> None:
+async def draw_errors(coin: dict) -> None:
     error_types = [
         'Mean Absolute Error',
         'Mean Absolute Percentage Error',
@@ -59,4 +59,4 @@ def draw_errors(coin: dict) -> None:
         plt.xticks(dataframe_algorithms.index, dataframe_algorithms['algorithm'], horizontalalignment='center',
                    fontsize=22, rotation=30)
 
-        save_plot(fig, plt, path.join(RESULTS_ERRORS_PATH, 'plots', coin['symbol']), error_type)
+        await save_plot(fig, plt, path.join(RESULTS_ERRORS_PATH, 'plots', coin['symbol']), error_type)

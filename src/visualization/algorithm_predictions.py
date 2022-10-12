@@ -7,7 +7,7 @@ from definitions import RESULTS_ERRORS_PATH, RESULTS_PREDICTIONS_PATH, regressio
 from .handle_plot import save_plot
 
 
-def draw_predictions(coin):
+async def draw_predictions(coin):
     data = []
     for model_name in regression_models:
         dataframe_errors = read_csv(path.join(RESULTS_ERRORS_PATH, 'data', coin['symbol'], model_name, 'error.csv'))
@@ -38,4 +38,4 @@ def draw_predictions(coin):
 
     plt.gcf().autofmt_xdate()
 
-    save_plot(fig, plt, path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')
+    await save_plot(fig, plt, path.join(RESULTS_PREDICTIONS_PATH, 'plots', coin['symbol']), 'prediction')

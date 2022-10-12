@@ -12,14 +12,14 @@ coins_router = APIRouter(tags=['coins'])
 
 
 @coins_router.get('/coins/')
-async def fetch_coins():
+async def fetch_coins() -> ORJSONResponse:
     return ORJSONResponse(jsonable_encoder(read_csv(path.join(DATA_EXTERNAL_PATH, 'coin_list.csv')).to_dict('records')),
                           status_code=status.HTTP_200_OK)
 
 
 @coins_router.get('/coins/{coin_id}/')
-async def fetch_coin(coin_id: str = None):
-    coin = check_coin(coin_id)
+async def fetch_coin(coin_id: str = None) -> ORJSONResponse:
+    coin = await check_coin(coin_id)
     if coin is None:
         message = 'Cannot return data because the coin is not found or is invalid.'
         return ORJSONResponse(jsonable_encoder({'error_message': message}), status_code=status.HTTP_404_NOT_FOUND)

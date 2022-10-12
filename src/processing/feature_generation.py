@@ -22,14 +22,14 @@ def get_season(time: datetime) -> str:
     return next(season for season, (start, end) in seasons if start <= dt <= end)
 
 
-def encode_categorical_data(dataframe: DataFrame) -> None:
+async def encode_categorical_data(dataframe: DataFrame) -> None:
     obj_columns = dataframe.select_dtypes('object').columns
     dataframe[obj_columns] = dataframe[obj_columns].astype('category')
     cat_columns = dataframe.select_dtypes('category').columns
     dataframe[cat_columns] = dataframe[cat_columns].apply(lambda x: x.cat.codes)
 
 
-def generate_lag_features(target: Series, lags: int) -> DataFrame:
+async def generate_lag_features(target: Series, lags: int) -> DataFrame:
     partial = Series(data=pacf(target, nlags=lags if lags < target.size // 2 else target.size // 2 - 1))
     lags = list(partial[abs(partial) >= 0.2].index)
 
@@ -44,7 +44,7 @@ def generate_lag_features(target: Series, lags: int) -> DataFrame:
     return features
 
 
-def generate_time_features(target) -> DataFrame:
+async def generate_time_features(target) -> DataFrame:
     features = DataFrame()
     features['month'] = target.index.month
     features['day'] = target.index.day
@@ -70,9 +70,9 @@ def generate_time_features(target) -> DataFrame:
     return features
 
 
-def generate_features(target: Series, lags: int = 24) -> DataFrame:
-    lag_features = generate_lag_features(target, lags)
-    time_features = generate_time_features(target)
+async def generate_features(target: Series, lags: int = 24) -> DataFrame:
+    lag_features = await generate_lag_features(target, lags)
+    time_features = await generate_time_features(target)
     features = time_features if len(lag_features.index) == 0 else lag_features.join(time_features, how='inner')
 
     return features.dropna(axis='columns', how='all').dropna(axis='index', how='any')

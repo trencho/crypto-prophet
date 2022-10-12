@@ -17,14 +17,14 @@ __all__ = [
 ]
 
 
-def get_model_class(model):
+async def get_model_class(model):
     if model in __all__:
         return globals()[model]
     else:
         raise Exception(f'The agent name {model} does not exist')
 
 
-def make_model(model):
+async def make_model(model):
     if model in __all__:
         return globals()[model]()
     else:
