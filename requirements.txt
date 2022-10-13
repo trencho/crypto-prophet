@@ -2,11 +2,11 @@ APScheduler==3.9.1
 fastapi==0.85.0
 lightgbm==3.3.3
 matplotlib==3.6.1
-numpy==1.23.3
+numpy==1.23.4
 orjson==3.8.0
 pandas==1.5.0
 pycoingecko==3.0.0
-PyGithub==1.55
+PyGithub==1.56
 requests==2.28.1
 scikit-learn==1.1.2
 scipy==1.9.2
