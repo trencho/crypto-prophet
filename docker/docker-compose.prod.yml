@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    command: gunicorn main:app --bind 0.0.0.0:5000 -w 4 -k uvicorn.workers.UvicornWorker
+    expose:
+      - 5000
+    labels:
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.fastapi.rule=Host(`subdomain.example.com`)'
+      - 'traefik.http.routers.fastapi.tls=true'
+      - 'traefik.http.routers.fastapi.tls.certresolver=letsencrypt'
+
+  traefik:
+    image: traefik:latest
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '$PWD/docker/traefik.prod.yml:/etc/traefik/traefik.prod.yml'

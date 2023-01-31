@@ -1,0 +1,21 @@
+entryPoints:
+  web:
+    address: ':80'
+    http:
+      redirections:
+        entryPoint:
+          to: 'websecure'
+          scheme: 'https'
+  websecure:
+    address: ':443'
+accessLog: { }
+providers:
+  docker:
+    exposedByDefault: false
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: 'atrenchevski@gmail.com'
+      storage: 'acme.json'
+      httpChallenge:
+        entryPoint: 'web'
