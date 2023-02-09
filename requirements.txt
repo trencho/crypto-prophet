@@ -1,9 +1,9 @@
 APScheduler==3.10.0
-fastapi==0.89.1
+fastapi==0.90.1
 lightgbm==3.3.5
 matplotlib==3.6.3
-numpy==1.24.1
-orjson==3.8.5
+numpy==1.24.2
+orjson==3.8.6
 pandas==1.5.3
 pycoingecko==3.1.0
 PyGithub==1.57
