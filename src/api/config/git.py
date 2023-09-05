@@ -5,13 +5,34 @@ from shutil import make_archive, move
 from traceback import print_exc
 
 from github import Github, GithubException, GitRef, GitTree, InputGitTreeElement, Repository
+from github.Auth import Token
 from pandas import concat, read_csv
 from requests import ReadTimeout
 from urllib3.exceptions import ReadTimeoutError
 
 from definitions import github_token, ROOT_PATH
 
-g = Github(environ.get(github_token))
+
+class GithubSingleton:
+    _instance = None
+
+    @staticmethod
+    def get_instance():
+        if not GithubSingleton._instance:
+            GithubSingleton._instance = GithubSingleton()
+        return GithubSingleton._instance
+
+    def __init__(self):
+        if (token := environ.get(github_token)) is not None:
+            self.github_instance = Github(auth=Token(token))
+        else:
+            self.github_instance = None
+
+    def get_repository(self, repo_name: str) -> Repository:
+        return self.github_instance.get_user().get_repo(repo_name)
+
+
+g = GithubSingleton.get_instance()
 
 
 async def append_commit_files(file_list: list, data: [bytes, str], root: str, file: str, file_names: list) -> None:
