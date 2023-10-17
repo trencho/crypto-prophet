@@ -16,7 +16,7 @@ async def draw_errors(coin: dict) -> None:
         'Root Mean Squared Error'
     ]
 
-    large, med, small = 22, 16, 12
+    large, med = 22, 16
     params = {
         'legend.fontsize': med,
         'figure.figsize': (16, 10),
@@ -28,7 +28,7 @@ async def draw_errors(coin: dict) -> None:
         'xtick.major.pad': 8
     }
     plt.rcParams.update(params)
-    plt.style.use('seaborn-whitegrid')
+    plt.style.use('seaborn-v0_8-whitegrid')
     seaborn.set_style('white')
 
     for error_type in error_types:
