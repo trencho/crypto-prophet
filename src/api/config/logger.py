@@ -1,19 +1,58 @@
-from logging import Formatter, INFO, StreamHandler
-from logging.handlers import TimedRotatingFileHandler
+from atexit import register
+from logging import getHandlerByName
+from logging.config import dictConfig
 from os import path
-from sys import stdout
-
-from fastapi.logger import logger
 
 from definitions import LOG_PATH
 
+CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "simple": {
+            "format": "%(asctime)s [%(name)s] [%(process)d] [%(levelname)s] %(message)s",
+            "datefmt": "[%Y-%m-%d %H:%M:%S %z]"
+        }
+    },
+    "handlers": {
+        "stdout": {
+            "class": "logging.StreamHandler",
+            "level": "INFO",
+            "formatter": "simple",
+            "stream": "ext://sys.stdout"
+        },
+        "file": {
+            "class": "logging.handlers.TimedRotatingFileHandler",
+            "level": "INFO",
+            "formatter": "simple",
+            "filename": f"{path.join(LOG_PATH, "app.log")}",
+            "when": "midnight",
+            "backupCount": 5
+        },
+        "queue": {
+            "class": "logging.handlers.QueueHandler",
+            "handlers": [
+                "stdout",
+                "file"
+            ],
+            "respect_handler_level": True
+        }
+    },
+    "loggers": {
+        "root": {
+            "handlers": [
+                "queue"
+            ],
+            "level": "DEBUG",
+            "propagate": True
+        }
+    }
+}
+
 
 async def configure_logger() -> None:
-    logger.setLevel(INFO)
-    formatter = Formatter("%(asctime)s %(name)-30s %(levelname)-8s %(message)s")
-    file_handler = TimedRotatingFileHandler(path.join(LOG_PATH, "app.log"), when="midnight", backupCount=5)
-    file_handler.setFormatter(formatter)
-    std_out_handler = StreamHandler(stdout)
-    std_out_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-    logger.addHandler(std_out_handler)
+    dictConfig(CONFIG)
+    queue_handler = getHandlerByName("queue")
+    if queue_handler is not None:
+        queue_handler.listener.start()
+        register(queue_handler.listener.stop)

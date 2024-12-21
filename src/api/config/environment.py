@@ -39,7 +39,7 @@ async def fetch_data() -> None:
 
         current_datetime = datetime.now()
         coin_data = coin_gecko.get_coin_market_chart_range_by_id(
-            coin['id'], 'usd', current_hour().replace(year=current_datetime.year - 5).timestamp(),
+            coin['id'], 'usd', current_hour().replace(year=current_datetime.year - 1).timestamp(),
             current_hour().timestamp())
         dataframe = DataFrame(coin_data["prices"], columns=["time", "value"])
         await trim_dataframe(dataframe, "time")

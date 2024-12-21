@@ -1,4 +1,5 @@
 from datetime import datetime
+from logging import getLogger
 from math import inf
 from os import environ, makedirs, path, remove
 from pickle import dump, HIGHEST_PROTOCOL
@@ -7,7 +8,6 @@ from threading import Thread
 from pandas import DataFrame, read_csv, to_datetime
 from sklearn.model_selection import RandomizedSearchCV
 
-from api.config.logger import logger
 from definitions import app_dev, app_env, DATA_EXTERNAL_PATH, MODELS_PATH, regression_models, RESULTS_ERRORS_PATH, \
     RESULTS_PREDICTIONS_PATH
 from models import make_model
@@ -16,6 +16,8 @@ from processing import backward_elimination, generate_features, value_scaling, e
 from processing.normalize_data import current_hour
 from visualization import draw_errors, draw_predictions
 from .process_results import save_errors, save_results
+
+logger = getLogger(__name__)
 
 lock_file = '.lock'
 
@@ -175,7 +177,7 @@ async def train_regression_model(coin: dict) -> None:
         await draw_errors(coin)
         await draw_predictions(coin)
     except Exception:
-        logger.error(f'Error occurred while training regression model for {coin["name"]}', exc_info=1)
+        logger.error(f'Error occurred while training regression model for {coin["name"]}', exc_info=True)
     finally:
         await remove_coin_lock(coin['symbol'])
 
