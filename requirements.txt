@@ -6,7 +6,7 @@ numpy==2.2.3
 orjson==3.10.15
 pandas==2.2.3
 pycoingecko==3.2.0
-PyGithub==2.6.0
+PyGithub==2.6.1
 requests==2.32.3
 scikit-learn==1.6.1
 scipy==1.15.2
