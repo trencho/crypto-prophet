@@ -1,7 +1,7 @@
 APScheduler==3.11.0
-fastapi==0.115.8
+fastapi==0.115.11
 lightgbm==4.6.0
-matplotlib==3.10.0
+matplotlib==3.10.1
 numpy==2.2.3
 orjson==3.10.15
 pandas==2.2.3
