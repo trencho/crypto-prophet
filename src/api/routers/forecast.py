@@ -4,10 +4,12 @@ from fastapi.responses import ORJSONResponse
 
 from processing import fetch_forecast_result
 
-forecast_router = APIRouter(tags=['forecast'])
+forecast_router = APIRouter(tags=["forecast"])
 
 
-@forecast_router.get('/forecast/')
+@forecast_router.get("/forecast/")
 async def forecast():
-    return ORJSONResponse(jsonable_encoder(list((await fetch_forecast_result()).values())),
-                          status_code=status.HTTP_200_OK)
+    return ORJSONResponse(
+        jsonable_encoder(list((await fetch_forecast_result()).values())),
+        status_code=status.HTTP_200_OK,
+    )
