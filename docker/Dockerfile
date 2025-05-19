@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.13.3-slim
 
 LABEL maintainer="Aleksandar Trenchevski <atrenchevski@gmail.com>"
 
@@ -6,8 +6,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV USER=app
 ENV APP_HOME=/home/app/web
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 
+# Prevents Python from writing pyc files and keeps Python from buffering stdout and stderr to avoid situations where
+# the application crashes without emitting any logs due to buffering.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Install system dependencies.
 RUN apt update && \
     apt upgrade -y && \
     apt dist-upgrade -y && \
@@ -19,10 +24,16 @@ RUN apt update && \
 # Set the working directory
 WORKDIR $APP_HOME
 
-COPY ./requirements.txt /requirements.txt
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir -r requirements.txt
+# Download dependencies as a separate step to take advantage of Docker's caching.
+# Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
+# Leverage a bind mount to requirements.txt to avoid having to copy them into
+# into this layer.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    --mount=type=bind,source=requirements.txt,target=requirements.txt \
+    pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
+# Copy the source code into the container.
 COPY . .
 
 RUN adduser --system --group $USER && \
