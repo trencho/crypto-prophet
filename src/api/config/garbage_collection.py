@@ -1,7 +1,7 @@
 from gc import collect, freeze, get_threshold, set_threshold
 
 
-async def configure_gc() -> None:
+def configure_gc() -> None:
     collect()
     freeze()
     _, g1, g2 = get_threshold()

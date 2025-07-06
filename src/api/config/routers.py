@@ -4,6 +4,6 @@ from api.routers.forecast import forecast_router
 __all__ = ["coins_router", "forecast_router"]
 
 
-async def register_routers(app) -> None:
+def register_routers(app) -> None:
     for router in __all__:
         app.include_router(globals()[router], prefix="/api/v1")

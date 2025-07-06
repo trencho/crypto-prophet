@@ -2,9 +2,9 @@ from numpy import nan
 from pandas import DataFrame
 
 
-async def trim_dataframe(dataframe: DataFrame, column: str) -> None:
-    dataframe.replace(to_replace=0, value=nan, inplace=True)
-    dataframe.dropna(axis="columns", how="all", inplace=True)
-    dataframe.drop_duplicates(subset=column, keep="last", inplace=True)
-    dataframe.reset_index(drop=True, inplace=True)
-    dataframe.sort_values(by=column, inplace=True)
+def trim_dataframe(dataframe: DataFrame, column: str) -> DataFrame:
+    dataframe = dataframe.replace(to_replace=0, value=nan)
+    dataframe = dataframe.dropna(axis="columns", how="all")
+    dataframe = dataframe.drop_duplicates(subset=column, keep="last")
+    dataframe = dataframe.reset_index(drop=True)
+    return dataframe.sort_values(by=column)

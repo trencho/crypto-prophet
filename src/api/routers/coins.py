@@ -1,4 +1,4 @@
-from os import path
+from pathlib import Path
 
 from fastapi import APIRouter, status
 from fastapi.encoders import jsonable_encoder
@@ -15,7 +15,7 @@ coins_router = APIRouter(tags=["coins"])
 async def fetch_coins() -> ORJSONResponse:
     return ORJSONResponse(
         jsonable_encoder(
-            read_csv(path.join(DATA_EXTERNAL_PATH, "coin_list.csv")).to_dict("records")
+            read_csv(Path(DATA_EXTERNAL_PATH) / "coin_list.csv").to_dict("records")
         ),
         status_code=status.HTTP_200_OK,
     )

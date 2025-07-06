@@ -39,7 +39,7 @@ CONFIG = {
 }
 
 
-async def configure_logger() -> None:
+def configure_logger() -> None:
     dictConfig(CONFIG)
     queue_handler = getHandlerByName("queue")
     if queue_handler is not None:

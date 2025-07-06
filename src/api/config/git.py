@@ -1,6 +1,7 @@
 from datetime import datetime
 from io import BytesIO, StringIO
 from os import environ, path, sep
+from pathlib import Path
 from shutil import make_archive, move
 from traceback import print_exc
 
@@ -42,12 +43,12 @@ class GithubSingleton:
 g = GithubSingleton.get_instance()
 
 
-async def append_commit_files(
-    file_list: list, data: [bytes, str], root: str, file: str, file_names: list
+def append_commit_files(
+    file_list: list, data: bytes, root: Path, file: str, file_names: list
 ) -> None:
     file_list.append(data)
     rel_dir = path.relpath(root, ROOT_PATH)
-    rel_file = path.join(rel_dir, file).replace("\\", "/").strip("./")
+    rel_file = Path(rel_dir) / file.replace("\\", "/").strip("./")
     file_names.append(rel_file)
 
 
@@ -85,7 +86,7 @@ async def commit_git_files(
         print_exc()
 
 
-async def create_archive(source, destination):
+def create_archive(source, destination):
     base = path.basename(destination)
     name = base.split(".")[0]
     fmt = base.split(".")[1]
@@ -95,7 +96,7 @@ async def create_archive(source, destination):
     move(f"{name}.{fmt}", destination)
 
 
-async def merge_csv_files(repo: Repository, file_name: str, data: str) -> str:
+def merge_csv_files(repo: Repository, file_name: str, data: str) -> str:
     local_file_content = read_csv(StringIO(data))
     try:
         repo_file = repo.get_contents(file_name)
@@ -105,7 +106,7 @@ async def merge_csv_files(repo: Repository, file_name: str, data: str) -> str:
         )
     except GithubException:
         print_exc()
-    local_file_content.drop_duplicates(inplace=True)
+    local_file_content = local_file_content.drop_duplicates()
     return local_file_content.to_csv(index=False)
 
 
@@ -123,7 +124,7 @@ async def update_git_files(
     element_list = []
     for i in range(0, len(file_list)):
         if (file_name := file_names[i]).endswith(".csv"):
-            file = await merge_csv_files(repo, file_name, file_list[i])
+            file = merge_csv_files(repo, file_name, file_list[i])
             element = InputGitTreeElement(file_name, "100644", "blob", file)
             element_list.append(element)
         elif file_name.endswith((".png", ".zip")):

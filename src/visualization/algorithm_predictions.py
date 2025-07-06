@@ -1,4 +1,4 @@
-from os import path
+from pathlib import Path
 
 from matplotlib import pyplot as plt
 from pandas import DataFrame, read_csv, to_datetime
@@ -7,26 +7,26 @@ from definitions import RESULTS_ERRORS_PATH, RESULTS_PREDICTIONS_PATH, regressio
 from .handle_plot import save_plot
 
 
-async def draw_predictions(coin):
+def draw_predictions(coin):
     data = []
     for model_name in regression_models:
         dataframe_errors = read_csv(
-            path.join(
-                RESULTS_ERRORS_PATH, "data", coin["symbol"], model_name, "error.csv"
-            )
+            Path(RESULTS_ERRORS_PATH)
+            / "data"
+            / coin["symbol"]
+            / model_name
+            / "error.csv"
         )
         data.append([model_name, dataframe_errors.iloc[0]["Mean Absolute Error"]])
 
     dataframe_algorithms = DataFrame(data, columns=["algorithm", coin["symbol"]])
     algorithm_index = dataframe_algorithms[coin["symbol"]].idxmin()
     dataframe_predictions = read_csv(
-        path.join(
-            RESULTS_PREDICTIONS_PATH,
-            "data",
-            coin["symbol"],
-            dataframe_algorithms.iloc[algorithm_index]["algorithm"],
-            "prediction.csv",
-        ),
+        Path(RESULTS_PREDICTIONS_PATH)
+        / "data"
+        / coin["symbol"]
+        / dataframe_algorithms.iloc[algorithm_index]["algorithm"]
+        / "prediction.csv",
         index_col="time",
     )
 
@@ -53,9 +53,9 @@ async def draw_predictions(coin):
 
     plt.gcf().autofmt_xdate()
 
-    await save_plot(
+    save_plot(
         fig,
         plt,
-        path.join(RESULTS_PREDICTIONS_PATH, "plots", coin["symbol"]),
+        Path(RESULTS_PREDICTIONS_PATH) / "plots" / coin["symbol"],
         "prediction",
     )

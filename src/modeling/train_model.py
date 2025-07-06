@@ -2,6 +2,7 @@ from datetime import datetime
 from logging import getLogger
 from math import inf
 from os import environ, makedirs, path, remove
+from pathlib import Path
 from pickle import dump, HIGHEST_PROTOCOL
 from threading import Thread
 
@@ -34,37 +35,33 @@ logger = getLogger(__name__)
 lock_file = ".lock"
 
 
-async def previous_value_overwrite(dataframe: DataFrame) -> DataFrame:
+def previous_value_overwrite(dataframe: DataFrame) -> DataFrame:
     dataframe = dataframe.shift(periods=-1, axis=0)
-    dataframe.drop(dataframe.tail(1).index, inplace=True)
-
-    return dataframe
+    return dataframe.drop(dataframe.tail(1).index)
 
 
-async def split_dataframe(
+def split_dataframe(
     dataframe: DataFrame, target: str, selected_features: list = None
 ) -> tuple:
     x = dataframe.drop(columns=target, errors="ignore")
-    x = await value_scaling(x)
+    x = value_scaling(x)
     y = dataframe["value"]
 
-    x = await previous_value_overwrite(x)
-    y.drop(y.tail(1).index, inplace=True)
+    x = previous_value_overwrite(x)
+    y = y.drop(y.tail(1).index)
 
     selected_features = (
-        await backward_elimination(x, y)
-        if selected_features is None
-        else selected_features
+        backward_elimination(x, y) if selected_features is None else selected_features
     )
     x = x[selected_features]
 
     return x, y
 
 
-async def save_selected_features(coin_symbol: str, selected_features: list) -> None:
-    makedirs(path.join(MODELS_PATH, coin_symbol), exist_ok=True)
+def save_selected_features(coin_symbol: str, selected_features: list) -> None:
+    makedirs(Path(MODELS_PATH) / coin_symbol, exist_ok=True)
     with open(
-        path.join(MODELS_PATH, coin_symbol, "selected_features.pkl"), "wb"
+        Path(MODELS_PATH) / coin_symbol / "selected_features.pkl", "wb"
     ) as out_file:
         dump(selected_features, out_file, HIGHEST_PROTOCOL)
 
@@ -78,35 +75,30 @@ async def read_model(coin_symbol: str, algorithm: str, error_type: str) -> tuple
     return model, dataframe_errors.iloc[0][error_type]
 
 
-async def create_models_path(coin_symbol: str, model_name: str) -> None:
+def create_models_path(coin_symbol: str, model_name: str) -> None:
     makedirs(path.join(MODELS_PATH, coin_symbol, model_name), exist_ok=True)
 
 
-async def create_results_path(
-    results_path: str, coin_symbol: str, model_name: str
-) -> None:
+def create_results_path(results_path: str, coin_symbol: str, model_name: str) -> None:
     makedirs(path.join(results_path, "data", coin_symbol, model_name), exist_ok=True)
 
 
-async def create_paths(coin_symbol: str, model_name: str) -> None:
-    await create_models_path(coin_symbol, model_name)
-    await create_results_path(RESULTS_ERRORS_PATH, coin_symbol, model_name)
-    await create_results_path(RESULTS_PREDICTIONS_PATH, coin_symbol, model_name)
+def create_paths(coin_symbol: str, model_name: str) -> None:
+    create_models_path(coin_symbol, model_name)
+    create_results_path(RESULTS_ERRORS_PATH, coin_symbol, model_name)
+    create_results_path(RESULTS_PREDICTIONS_PATH, coin_symbol, model_name)
 
 
-async def check_coin_lock(coin_symbol: str) -> bool:
+def check_coin_lock(coin_symbol: str) -> bool:
     return path.exists(path.join(MODELS_PATH, coin_symbol, lock_file))
 
 
-async def create_coin_lock(coin_symbol: str) -> None:
+def create_coin_lock(coin_symbol: str) -> None:
     makedirs(path.join(MODELS_PATH, coin_symbol), exist_ok=True)
-    with open(path.join(MODELS_PATH, coin_symbol, lock_file), "w"):
-        pass
+    (MODELS_PATH / coin_symbol / lock_file).write_text("")
 
 
-async def hyper_parameter_tuning(
-    model: BaseRegressionModel, x_train, y_train, coin_symbol
-):
+def hyper_parameter_tuning(model: BaseRegressionModel, x_train, y_train, coin_symbol):
     model_cv = RandomizedSearchCV(model.reg, model.param_grid, cv=5)
     model_cv.fit(x_train, y_train)
 
@@ -125,14 +117,14 @@ async def hyper_parameter_tuning(
     return model_cv.best_params_
 
 
-async def remove_coin_lock(coin_symbol: str) -> None:
+def remove_coin_lock(coin_symbol: str) -> None:
     try:
         remove(path.join(MODELS_PATH, coin_symbol, lock_file))
     except OSError:
         pass
 
 
-async def check_best_regression_model(coin_symbol: str) -> bool:
+def check_best_regression_model(coin_symbol: str) -> bool:
     try:
         last_modified = int(
             path.getmtime(
@@ -148,7 +140,7 @@ async def check_best_regression_model(coin_symbol: str) -> bool:
         return False
 
 
-async def save_best_regression_model(
+def save_best_regression_model(
     coin_symbol: str, best_model: BaseRegressionModel
 ) -> None:
     with open(
@@ -158,16 +150,16 @@ async def save_best_regression_model(
 
 
 async def generate_regression_model(dataframe: DataFrame, coin_symbol: str) -> None:
-    dataframe = dataframe.join(await generate_features(dataframe["value"]), how="inner")
-    await encode_categorical_data(dataframe)
+    dataframe = dataframe.join(generate_features(dataframe["value"]), how="inner")
+    encode_categorical_data(dataframe)
     validation_split = len(dataframe.index) * 3 // 4
 
     train_dataframe = dataframe.iloc[:validation_split]
-    x_train, y_train = await split_dataframe(train_dataframe, "value")
+    x_train, y_train = split_dataframe(train_dataframe, "value")
     selected_features = x_train.columns.values.tolist()
 
     test_dataframe = dataframe.iloc[validation_split:]
-    x_test, y_test = await split_dataframe(test_dataframe, "value", selected_features)
+    x_test, y_test = split_dataframe(test_dataframe, "value", selected_features)
 
     best_model_error = inf
     best_model = None
@@ -183,58 +175,54 @@ async def generate_regression_model(dataframe: DataFrame, coin_symbol: str) -> N
                 best_model_error = model_error
             continue
 
-        await create_paths(coin_symbol, model_name)
+        create_paths(coin_symbol, model_name)
 
         model = await make_model(model_name)
-        params = await hyper_parameter_tuning(model, x_train, y_train, coin_symbol)
+        params = hyper_parameter_tuning(model, x_train, y_train, coin_symbol)
         model.set_params(**params)
         model.train(x_train, y_train)
 
         if env_var == app_dev:
-            model.save(path.join(MODELS_PATH, coin_symbol))
+            model.save(Path(MODELS_PATH) / coin_symbol)
 
         y_predicted = model.predict(x_test)
 
         results = DataFrame({"Actual": y_test, "Predicted": y_predicted}, x_test.index)
-        await save_results(coin_symbol, model_name, results)
+        save_results(coin_symbol, model_name, results)
 
         if (
-            model_error := await save_errors(
-                coin_symbol, model_name, y_test, y_predicted
-            )
+            model_error := save_errors(coin_symbol, model_name, y_test, y_predicted)
         ) < best_model_error:
             best_model = model
             best_model_error = model_error
 
     if best_model is not None:
-        await save_selected_features(coin_symbol, selected_features)
-        x_train, y_train = await split_dataframe(dataframe, "value", selected_features)
+        save_selected_features(coin_symbol, selected_features)
+        x_train, y_train = split_dataframe(dataframe, "value", selected_features)
         best_model.train(x_train, y_train)
-        await save_best_regression_model(coin_symbol, best_model.reg)
+        save_best_regression_model(coin_symbol, best_model.reg)
 
 
 async def train_regression_model(coin: dict) -> None:
-    if await check_best_regression_model(coin["symbol"]) or await check_coin_lock(
-        coin["symbol"]
-    ):
+    if check_best_regression_model(coin["symbol"]) or check_coin_lock(coin["symbol"]):
         return
     try:
         dataframe = read_csv(
-            path.join(DATA_EXTERNAL_PATH, coin["symbol"], "data.csv"), index_col="time"
+            Path(DATA_EXTERNAL_PATH, coin["symbol"], "data.csv"), index_col="time"
         )
         dataframe.index = to_datetime(dataframe.index / 10**3, unit="s")
-        await create_coin_lock(coin["symbol"])
+        create_coin_lock(coin["symbol"])
         await generate_regression_model(dataframe, coin["symbol"])
-        await draw_errors(coin)
-        await draw_predictions(coin)
+        draw_errors(coin)
+        draw_predictions(coin)
     except Exception:
         logger.error(
             f'Error occurred while training regression model for {coin["name"]}',
             exc_info=True,
         )
     finally:
-        await remove_coin_lock(coin["symbol"])
+        remove_coin_lock(coin["symbol"])
 
 
-async def train_coin_models(coin: dict) -> None:
+def train_coin_models(coin: dict) -> None:
     Thread(target=train_regression_model, args=(coin,), daemon=True).start()

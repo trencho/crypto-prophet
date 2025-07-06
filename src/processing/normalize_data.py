@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-async def closest_hour(t: datetime) -> datetime:
+def closest_hour(t: datetime) -> datetime:
     return t.replace(
         hour=t.hour if t.minute <= 30 else 0 if t.hour == 23 else t.hour + 1,
         minute=0,
@@ -15,7 +15,7 @@ def current_hour() -> datetime:
     return t.replace(hour=t.hour, minute=0, second=0, microsecond=0)
 
 
-async def flatten_json(nested_json: dict, exclude: list[str] = None) -> dict:
+def flatten_json(nested_json: dict, exclude: list[str] = None) -> dict:
     """
     Flatten a list of nested dicts.
     """
@@ -45,7 +45,7 @@ async def flatten_json(nested_json: dict, exclude: list[str] = None) -> dict:
     return out
 
 
-async def next_hour(t: datetime) -> datetime:
+def next_hour(t: datetime) -> datetime:
     return t.replace(
         day=t.day + 1 if t.hour == 23 else t.day,
         hour=0 if t.hour == 23 else t.hour + 1,

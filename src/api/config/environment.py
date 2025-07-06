@@ -1,3 +1,4 @@
+from asyncio import sleep
 from datetime import datetime
 from os import environ, makedirs, path
 from time import sleep
@@ -30,7 +31,7 @@ system_paths = [
 ]
 
 
-async def check_environment_variables() -> None:
+def check_environment_variables() -> None:
     for environment_variable in environment_variables:
         if environ.get(environment_variable) is None:
             print(f'The environment variable "{environment_variable}" is missing')
@@ -40,7 +41,7 @@ async def check_environment_variables() -> None:
 async def fetch_data() -> None:
     coin_gecko = CoinGeckoAPI()
     coin_list = coin_gecko.get_coins_list()
-    sleep(1)
+    await sleep(1)
     json_normalize(coin_list).to_csv(
         path.join(DATA_EXTERNAL_PATH, "coin_list.csv"), index=False
     )
@@ -56,15 +57,15 @@ async def fetch_data() -> None:
             current_hour().timestamp(),
         )
         dataframe = DataFrame(coin_data["prices"], columns=["time", "value"])
-        await trim_dataframe(dataframe, "time")
+        dataframe = trim_dataframe(dataframe, "time")
         makedirs(path.join(DATA_EXTERNAL_PATH, coin["symbol"]), exist_ok=True)
         dataframe.to_csv(
             path.join(DATA_EXTERNAL_PATH, coin["symbol"], "data.csv"), index=False
         )
 
-        sleep(1)
+        await sleep(1)
 
 
-async def init_system_paths() -> None:
+def init_system_paths() -> None:
     for system_path in system_paths:
         makedirs(system_path, exist_ok=True)

@@ -1,7 +1,8 @@
+from asyncio import sleep
 from base64 import b64encode
 from datetime import datetime
 from os import environ, path, remove, walk
-from time import sleep
+from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from pandas import DataFrame, json_normalize, read_csv
@@ -21,13 +22,13 @@ async def dump_data() -> None:
     for root, directories, files in walk(DATA_PATH):
         if not directories and files:
             file_path = f"{root}.zip"
-            await create_archive(source=root, destination=file_path)
+            create_archive(source=root, destination=file_path)
             with open(file_path, "rb") as in_file:
                 data = b64encode(in_file.read())
-            await append_commit_files(
+            append_commit_files(
                 file_list,
                 data,
-                path.dirname(path.abspath(root)),
+                Path(root).resolve().parent,
                 path.basename(file_path),
                 file_names,
             )
@@ -46,16 +47,14 @@ async def dump_data() -> None:
 @scheduler.scheduled_job(trigger="cron", minute="*/15")
 async def model_training() -> None:
     for file in [
-        path.join(root, file)
+        Path(root) / file
         for root, directories, files in walk(MODELS_PATH)
         for file in files
         if file.endswith(".lock")
     ]:
-        remove(path.join(MODELS_PATH, file))
+        remove(Path(MODELS_PATH) / file)
 
-    coin_list = read_csv(path.join(DATA_EXTERNAL_PATH, "coin_list.csv")).to_dict(
-        "records"
-    )
+    coin_list = read_csv(Path(DATA_EXTERNAL_PATH) / "coin_list.csv").to_dict("records")
     for coin in coin_list:
         if coin["id"] in coins:
             await train_regression_model(coin)
@@ -65,9 +64,9 @@ async def model_training() -> None:
 async def update_coin_info() -> None:
     coin_gecko = CoinGeckoAPI()
     coin_list = coin_gecko.get_coins_list()
-    sleep(1)
+    await sleep(1)
     json_normalize(coin_list).to_csv(
-        path.join(DATA_EXTERNAL_PATH, "coin_list.csv"), index=False
+        Path(DATA_EXTERNAL_PATH) / "coin_list.csv", index=False
     )
     for coin in coin_list:
         if coin["id"] not in coins:
@@ -77,24 +76,23 @@ async def update_coin_info() -> None:
         updated_coin_dataframe = DataFrame(
             updated_coin_data["prices"], columns=["time", "value"]
         )
-        await trim_dataframe(updated_coin_dataframe, "time")
+        updated_coin_dataframe = trim_dataframe(updated_coin_dataframe, "time")
         coin_dataframe = read_csv(
-            path.join(DATA_EXTERNAL_PATH, coin["symbol"], "data.csv")
+            Path(DATA_EXTERNAL_PATH) / coin["symbol"] / "data.csv"
         )
         last_timestamp = coin_dataframe["time"].iloc[-1]
-        updated_coin_dataframe.drop(
+        updated_coin_dataframe = updated_coin_dataframe.drop(
             index=updated_coin_dataframe.loc[
                 updated_coin_dataframe["time"] < last_timestamp
             ].index,
-            inplace=True,
             errors="ignore",
         )
         coin_dataframe.append(updated_coin_dataframe, ignore_index=True).to_csv(
-            path.join(DATA_EXTERNAL_PATH, coin["symbol"], "data.csv"), index=False
+            Path(DATA_EXTERNAL_PATH) / coin["symbol"] / "data.csv", index=False
         )
 
-        sleep(1)
+        await sleep(1)
 
 
-async def schedule_jobs() -> None:
+def schedule_jobs() -> None:
     scheduler.start()

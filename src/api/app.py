@@ -18,15 +18,15 @@ from definitions import app_dev, app_env, app_prod
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await configure_gc()
-    await init_system_paths()
+    configure_gc()
+    init_system_paths()
 
     if environ.get(app_env, app_dev) == app_prod:
-        await check_environment_variables()
-        await schedule_jobs()
+        check_environment_variables()
+        schedule_jobs()
 
-    await configure_logger()
-    await register_routers(app)
+    configure_logger()
+    register_routers(app)
 
     await fetch_data()
 

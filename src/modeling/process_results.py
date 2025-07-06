@@ -1,17 +1,15 @@
 from math import isinf
-from os import path
+from pathlib import Path
 from typing import Optional
 
-from numpy import abs, array, inf, mean, nan, ndarray, sqrt
+from numpy import abs, array, inf, mean, nan, sqrt
 from pandas import DataFrame, Series
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from definitions import RESULTS_ERRORS_PATH, RESULTS_PREDICTIONS_PATH
 
 
-async def filter_invalid_values(
-    y_true: [ndarray, Series], y_predicted: [ndarray, Series]
-) -> tuple:
+def filter_invalid_values(y_true: Series, y_predicted: Series) -> tuple:
     dataframe = (
         DataFrame({"y_true": y_true, "y_predicted": y_predicted})
         .replace([-inf, inf], nan)
@@ -20,7 +18,7 @@ async def filter_invalid_values(
     return dataframe["y_true"], dataframe["y_predicted"]
 
 
-async def mean_absolute_percentage_error(
+def mean_absolute_percentage_error(
     y_true: Series, y_predicted: Series
 ) -> Optional[float]:
     y_true, y_predicted = array(y_true), array(y_predicted)
@@ -28,17 +26,17 @@ async def mean_absolute_percentage_error(
     return None if isinf(mape) else mape
 
 
-async def save_errors(
+def save_errors(
     coin_symbol: str, model_name: str, y_true: Series, y_predicted: Series
 ) -> float:
-    y_true, y_predicted = await filter_invalid_values(y_true, y_predicted)
+    y_true, y_predicted = filter_invalid_values(y_true, y_predicted)
     try:
         mae = mean_absolute_error(y_true, y_predicted)
         mse = mean_squared_error(y_true, y_predicted)
         dataframe = DataFrame(
             {
                 "Mean Absolute Error": None if isinf(mae) else mae,
-                "Mean Absolute Percentage Error": await mean_absolute_percentage_error(
+                "Mean Absolute Percentage Error": mean_absolute_percentage_error(
                     y_true, y_predicted
                 ),
                 "Mean Squared Error": mse,
@@ -53,9 +51,7 @@ async def save_errors(
             ],
         )
         dataframe.to_csv(
-            path.join(
-                RESULTS_ERRORS_PATH, "data", coin_symbol, model_name, "error.csv"
-            ),
+            Path(RESULTS_ERRORS_PATH) / "data" / coin_symbol / model_name / "error.csv",
             index=False,
         )
 
@@ -64,9 +60,11 @@ async def save_errors(
         return inf
 
 
-async def save_results(coin_symbol: str, model_name: str, dataframe: DataFrame) -> None:
+def save_results(coin_symbol: str, model_name: str, dataframe: DataFrame) -> None:
     dataframe.to_csv(
-        path.join(
-            RESULTS_PREDICTIONS_PATH, "data", coin_symbol, model_name, "prediction.csv"
-        )
+        Path(RESULTS_PREDICTIONS_PATH)
+        / "data"
+        / coin_symbol
+        / model_name
+        / "prediction.csv"
     )

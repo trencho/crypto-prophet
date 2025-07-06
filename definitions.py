@@ -1,4 +1,5 @@
-from os import environ, path
+from os import environ
+from pathlib import Path
 
 app_env = "APP_ENV"
 
@@ -11,20 +12,20 @@ volume_path = "VOLUME_PATH"
 environment_variables = [app_env, github_token, repo_name]
 
 VOLUME_PATH = environ.get(volume_path, "")
-ROOT_PATH = VOLUME_PATH or path.dirname(path.abspath(__file__))
+ROOT_PATH = VOLUME_PATH or Path(__file__).resolve().parent
 
-DATA_PATH = path.join(ROOT_PATH, "data")
-DATA_EXTERNAL_PATH = path.join(DATA_PATH, "external")
-DATA_PROCESSED_PATH = path.join(DATA_PATH, "processed")
-DATA_RAW_PATH = path.join(DATA_PATH, "raw")
+DATA_PATH = Path(ROOT_PATH) / "data"
+DATA_EXTERNAL_PATH = Path(DATA_PATH) / "external"
+DATA_PROCESSED_PATH = Path(DATA_PATH) / "processed"
+DATA_RAW_PATH = Path(DATA_PATH) / "raw"
 
-LOG_PATH = path.join(ROOT_PATH, "logs")
+LOG_PATH = Path(ROOT_PATH) / "logs"
 
-MODELS_PATH = path.join(ROOT_PATH, "models")
+MODELS_PATH = Path(ROOT_PATH) / "models"
 
-RESULTS_PATH = path.join(ROOT_PATH, "results")
-RESULTS_ERRORS_PATH = path.join(RESULTS_PATH, "errors")
-RESULTS_PREDICTIONS_PATH = path.join(RESULTS_PATH, "predictions")
+RESULTS_PATH = Path(ROOT_PATH) / "results"
+RESULTS_ERRORS_PATH = Path(RESULTS_PATH) / "errors"
+RESULTS_PREDICTIONS_PATH = Path(RESULTS_PATH) / "predictions"
 
 app_dev = "development"
 app_prod = "production"

@@ -10,6 +10,6 @@ forecast_router = APIRouter(tags=["forecast"])
 @forecast_router.get("/forecast/")
 async def forecast():
     return ORJSONResponse(
-        jsonable_encoder(list((await fetch_forecast_result()).values())),
+        jsonable_encoder(list((fetch_forecast_result()).values())),
         status_code=status.HTTP_200_OK,
     )

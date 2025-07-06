@@ -1,4 +1,4 @@
-from os import path
+from pathlib import Path
 
 import seaborn
 from matplotlib import pyplot as plt
@@ -8,7 +8,7 @@ from definitions import RESULTS_ERRORS_PATH, regression_models
 from .handle_plot import save_plot
 
 
-async def draw_errors(coin: dict) -> None:
+def draw_errors(coin: dict) -> None:
     error_types = [
         "Mean Absolute Error",
         "Mean Absolute Percentage Error",
@@ -35,9 +35,11 @@ async def draw_errors(coin: dict) -> None:
         data = []
         for model_name in regression_models:
             dataframe_errors = read_csv(
-                path.join(
-                    RESULTS_ERRORS_PATH, "data", coin["symbol"], model_name, "error.csv"
-                )
+                Path(RESULTS_ERRORS_PATH)
+                / "plots"
+                / coin["symbol"]
+                / model_name
+                / "error.csv"
             )
             data.append(
                 [regression_models[model_name], dataframe_errors.iloc[0][error_type]]
@@ -49,10 +51,10 @@ async def draw_errors(coin: dict) -> None:
         if len(dataframe_algorithms.index) == 0:
             continue
 
-        dataframe_algorithms.sort_values(
-            by=coin["symbol"], ascending=False, inplace=True
+        dataframe_algorithms = dataframe_algorithms.sort_values(
+            by=coin["symbol"], ascending=False
         )
-        dataframe_algorithms.reset_index(drop=True, inplace=True)
+        dataframe_algorithms = dataframe_algorithms.reset_index(drop=True)
 
         fig, ax = plt.subplots(figsize=(16, 10), facecolor="white", dpi=80)
         ax.vlines(
@@ -91,9 +93,9 @@ async def draw_errors(coin: dict) -> None:
             rotation=30,
         )
 
-        await save_plot(
+        save_plot(
             fig,
             plt,
-            path.join(RESULTS_ERRORS_PATH, "plots", coin["symbol"]),
+            Path(RESULTS_ERRORS_PATH) / "plots" / coin["symbol"],
             error_type,
         )
