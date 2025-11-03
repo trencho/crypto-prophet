@@ -1,6 +1,6 @@
-APScheduler==3.11.0
+APScheduler==3.11.1
 black==25.9.0
-fastapi==0.120.1
+fastapi==0.121.0
 lightgbm==4.6.0
 matplotlib==3.10.7
 numpy==2.3.4
@@ -10,7 +10,7 @@ pycoingecko==3.2.0
 PyGithub==2.8.1
 requests==2.32.5
 scikit-learn==1.7.2
-scipy==1.16.2
+scipy==1.16.3
 seaborn==0.13.2
 statsmodels==0.14.5
 urllib3==2.5.0
