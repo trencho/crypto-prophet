@@ -1,6 +1,6 @@
 APScheduler==3.11.1
-black==25.9.0
-fastapi==0.121.0
+black==25.11.0
+fastapi==0.121.1
 lightgbm==4.6.0
 matplotlib==3.10.7
 numpy==2.3.4
