@@ -1,9 +1,9 @@
 APScheduler==3.11.1
 black==25.11.0
-fastapi==0.121.1
+fastapi==0.121.3
 lightgbm==4.6.0
 matplotlib==3.10.7
-numpy==2.3.4
+numpy==2.3.5
 orjson==3.11.4
 pandas==2.3.3
 pycoingecko==3.2.0
@@ -15,4 +15,4 @@ seaborn==0.13.2
 statsmodels==0.14.5
 urllib3==2.5.0
 uvicorn==0.38.0
-xgboost==3.1.1
+xgboost==3.1.2
