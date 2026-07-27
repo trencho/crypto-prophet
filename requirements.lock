@@ -40,7 +40,7 @@ cryptography==49.0.0
     # via pyjwt
 cycler==0.12.1
     # via matplotlib
-fastapi==0.140.4
+fastapi==0.140.5
     # via -r requirements.txt
 fonttools==4.63.0
     # via matplotlib
