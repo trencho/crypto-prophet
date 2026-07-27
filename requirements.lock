@@ -11,9 +11,9 @@ anyio==4.14.2
     # via
     #   httpx
     #   starlette
-apscheduler==3.11.2
+apscheduler==3.11.3
     # via -r requirements.txt
-black==26.3.1
+black==26.5.1
     # via -r requirements.txt
 certifi==2026.7.22
     # via
@@ -65,15 +65,19 @@ joblib==1.5.3
     # via scikit-learn
 kiwisolver==1.5.0
     # via matplotlib
-lightgbm==4.6.0
+lightgbm==4.7.0
     # via -r requirements.txt
-matplotlib==3.10.8
+matplotlib==3.11.1
     # via
     #   -r requirements.txt
     #   seaborn
 mypy-extensions==1.1.0
     # via black
-numpy==2.4.4
+narwhals==2.24.0
+    # via
+    #   lightgbm
+    #   scikit-learn
+numpy==2.5.1
     # via
     #   -r requirements.txt
     #   contourpy
@@ -86,7 +90,7 @@ numpy==2.4.4
     #   seaborn
     #   statsmodels
     #   xgboost
-orjson==3.11.8
+orjson==3.11.9
     # via -r requirements.txt
 packaging==26.2
     # via
@@ -95,7 +99,7 @@ packaging==26.2
     #   matplotlib
     #   pytest
     #   statsmodels
-pandas==3.0.2
+pandas==3.0.5
     # via
     #   -r requirements.txt
     #   seaborn
@@ -118,7 +122,7 @@ pydantic==2.13.4
     # via fastapi
 pydantic-core==2.46.4
     # via pydantic
-pygithub==2.9.0
+pygithub==2.9.1
     # via -r requirements.txt
 pygments==2.20.0
     # via pytest
@@ -136,14 +140,14 @@ python-dateutil==2.9.0.post0
     #   pandas
 pytokens==0.4.1
     # via black
-requests==2.33.1
+requests==2.34.2
     # via
     #   -r requirements.txt
     #   pycoingecko
     #   pygithub
-scikit-learn==1.8.0
+scikit-learn==1.9.0
     # via -r requirements.txt
-scipy==1.17.1
+scipy==1.18.0
     # via
     #   -r requirements.txt
     #   lightgbm
@@ -184,5 +188,5 @@ urllib3==2.7.0
     #   requests
 uvicorn==0.44.0
     # via -r requirements.txt
-xgboost==3.2.0
+xgboost==3.3.0
     # via -r requirements.txt
