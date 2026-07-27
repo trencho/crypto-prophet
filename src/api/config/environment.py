@@ -1,7 +1,6 @@
 from asyncio import sleep
 from datetime import datetime
 from os import environ, makedirs, path
-from time import sleep
 
 from pandas import DataFrame, json_normalize
 from pycoingecko import CoinGeckoAPI

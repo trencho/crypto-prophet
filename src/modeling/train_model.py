@@ -4,7 +4,6 @@ from math import inf
 from os import environ, makedirs, path, remove
 from pathlib import Path
 from pickle import dump, HIGHEST_PROTOCOL
-from threading import Thread
 
 from pandas import DataFrame, read_csv, to_datetime
 from sklearn.model_selection import RandomizedSearchCV
@@ -222,7 +221,3 @@ async def train_regression_model(coin: dict) -> None:
         )
     finally:
         remove_coin_lock(coin["symbol"])
-
-
-def train_coin_models(coin: dict) -> None:
-    Thread(target=train_regression_model, args=(coin,), daemon=True).start()

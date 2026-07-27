@@ -4,8 +4,8 @@ from datetime import datetime
 from os import environ, path, remove, walk
 from pathlib import Path
 
-from apscheduler.schedulers.background import BackgroundScheduler
-from pandas import DataFrame, json_normalize, read_csv
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from pandas import DataFrame, concat, json_normalize, read_csv
 from pycoingecko import CoinGeckoAPI
 
 from definitions import coins, DATA_EXTERNAL_PATH, DATA_PATH, MODELS_PATH, repo_name
@@ -13,7 +13,7 @@ from modeling import train_regression_model
 from preparation import trim_dataframe
 from .git import append_commit_files, create_archive, update_git_files
 
-scheduler = BackgroundScheduler()
+scheduler = AsyncIOScheduler()
 
 
 @scheduler.scheduled_job(trigger="cron", day="*/15")
@@ -87,7 +87,7 @@ async def update_coin_info() -> None:
             ].index,
             errors="ignore",
         )
-        coin_dataframe.append(updated_coin_dataframe, ignore_index=True).to_csv(
+        concat([coin_dataframe, updated_coin_dataframe], ignore_index=True).to_csv(
             Path(DATA_EXTERNAL_PATH) / coin["symbol"] / "data.csv", index=False
         )
 
