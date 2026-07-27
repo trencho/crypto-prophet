@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Canonical job id `build`. No test suite exists yet, so the gate is: format check (black) plus a
+  # byte-compile of every module (catches syntax/parse errors across src). Add a `pytest` step here
+  # once tests exist.
+  build:
+    name: lint + compile-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Match the runtime the Docker image pins (python:3.14.6-slim).
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check formatting (Black)
+        run: black --check src definitions.py
+
+      - name: Compile-check (syntax of all modules)
+        run: python -m compileall -q src definitions.py

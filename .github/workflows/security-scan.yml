@@ -1,0 +1,38 @@
+name: Security scan
+
+# Weekly OSV vulnerability scan of the dependency tree, deliberately decoupled from the CI gate: a
+# newly-published advisory surfaces as a scheduled red (and notifies the owner) without ever blocking
+# a PR. Uses the plain OSV-Scanner action (no SARIF upload), so no GitHub Advanced Security is needed;
+# the job fails if OSV finds a known vulnerability.
+#
+# Scans the fully-pinned LOCK, not the direct-only requirements.txt: a direct-only file leaves
+# transitives unpinned, so OSV would resolve them to their oldest-compatible versions and report false
+# positives. `.lock` isn't an OSV-recognized name, so force the pip parser with `<parse-as>:<path>`.
+# Regenerate requirements.lock when requirements.txt changes.
+on:
+  schedule:
+    - cron: "49 4 * * 1" # weekly, Monday 04:49 UTC
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  osv-scan:
+    name: OSV scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: OSV-Scanner
+        uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            -L
+            requirements.txt:requirements.lock
