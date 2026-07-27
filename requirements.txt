@@ -1,6 +1,6 @@
 APScheduler==3.11.3
 black==26.5.1
-fastapi==0.135.3
+fastapi==0.140.4
 gunicorn==26.0.0
 httpx==0.28.1
 lightgbm==4.7.0
@@ -17,5 +17,5 @@ scipy==1.18.0
 seaborn==0.13.2
 statsmodels==0.14.6
 urllib3==2.7.0
-uvicorn==0.44.0
+uvicorn==0.51.0
 xgboost==3.3.0
