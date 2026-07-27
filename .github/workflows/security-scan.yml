@@ -33,6 +33,10 @@ jobs:
       - name: OSV-Scanner
         uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
         with:
+          # --no-resolve: the lock is already fully pinned, so read exactly those versions and skip
+          # OSV's transitive-dependency resolver (which is redundant here and errors "resolution
+          # impossible" on this dep set -> exit 127, even though the pinned scan finds 0 vulns).
           scan-args: |-
+            --no-resolve
             -L
             requirements.txt:requirements.lock
