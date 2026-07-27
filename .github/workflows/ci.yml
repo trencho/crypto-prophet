@@ -14,10 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Canonical job id `build`. Gate: format check (black), byte-compile of every module
-  # (catches syntax/parse errors across src), and the pytest suite (tests/).
+  # Canonical job id `build` (no `name:`, so the check-run is literally "build" — the exact name
+  # dependabot-auto-merge.yml gates on). Gate: black format check, byte-compile of every module, pytest.
   build:
-    name: lint + compile-check + test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

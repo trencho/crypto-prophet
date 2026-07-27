@@ -1,0 +1,36 @@
+# Dependabot version updates. Grouping minor+patch keeps majors in their own PR (excluded from
+# auto-merge). Dependabot updates requirements.txt (the install source of truth); it does NOT know
+# about requirements.lock, so regenerate the lock (uv pip compile / pip-compile) when a bump lands
+# — the OSV security scan reads the lock.
+version: 2
+updates:
+  # Python deps (requirements.txt at repo root).
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      minor-and-patch:
+        update-types:
+          - minor
+          - patch
+
+  # Keep GitHub Actions pins fresh.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+
+  # Dockerfile base image (docker/Dockerfile -> python:3.14.6-slim).
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: chore
