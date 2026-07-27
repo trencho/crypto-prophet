@@ -44,6 +44,8 @@ fastapi==0.135.3
     # via -r requirements.txt
 fonttools==4.63.0
     # via matplotlib
+gunicorn==26.0.0
+    # via -r requirements.txt
 h11==0.16.0
     # via
     #   httpcore
@@ -89,6 +91,7 @@ orjson==3.11.8
 packaging==26.2
     # via
     #   black
+    #   gunicorn
     #   matplotlib
     #   pytest
     #   statsmodels
