@@ -34,7 +34,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Check formatting (Black)
-        run: black --check src tests definitions.py
+        run: black --check src tests definitions.py main.py
+
+      - name: Lint imports (Ruff)
+        run: ruff check src tests definitions.py main.py
 
       - name: Compile-check (syntax of all modules)
         run: python -m compileall -q src definitions.py
