@@ -21,12 +21,49 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Match the runtime the Docker image pins (python:3.14.6-slim).
+      # Match the runtime the Docker image pins (python:3.14.x-slim).
       - uses: actions/setup-python@v7
         with:
           python-version: "3.14"
           cache: pip
           cache-dependency-path: requirements.txt
+
+      # security-scan.yml points OSV at requirements.lock, NOT requirements.txt. Dependabot bumps the
+      # manifest and never the lock, so without this the two drift apart and the scan quietly audits a
+      # tree nobody installs -- a green scan on the wrong input, which is worse than a red one because
+      # nothing prompts you to look. It drifted twice in August 2026, the second time within an hour
+      # of being fixed by hand.
+      #
+      # This compares the DECLARED pins against the lock's entry for the same package. It deliberately
+      # does NOT recompile-and-diff: recompiling resolves against the live index, so any newly
+      # released transitive would fail CI on an unrelated PR.
+      - name: Lock agrees with the manifest
+        run: |
+          python - <<'PY'
+          import re, sys
+          def pins(path):
+              out = {}
+              for line in open(path, encoding="utf-8"):
+                  line = line.split("#")[0].strip()
+                  if not line or line.startswith(("-r", "-c", "--")):
+                      continue
+                  m = re.match(r"^([A-Za-z0-9._-]+)\[?[^\]]*\]?==([^\s;]+)", line)
+                  if m:
+                      out[m.group(1).lower().replace("_", "-")] = m.group(2)
+              return out
+          declared, locked = pins("requirements.txt"), pins("requirements.lock")
+          bad = [(n, v, locked[n]) for n, v in declared.items() if n in locked and locked[n] != v]
+          missing = [n for n in declared if n not in locked]
+          for n, v, l in bad:
+              print(f"::error::{n}: requirements.txt pins {v}, requirements.lock pins {l}")
+          for n in missing:
+              print(f"::error::{n} is in requirements.txt but absent from requirements.lock")
+          if bad or missing:
+              print("Regenerate: uv pip compile requirements.txt --python-version 3.14 "
+                    "--strip-extras --no-header -o requirements.lock  (then restore the header)")
+              sys.exit(1)
+          print(f"lock agrees with the manifest ({len(declared)} declared pins checked)")
+          PY
 
       - name: Install dependencies
         run: |
