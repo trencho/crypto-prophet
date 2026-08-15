@@ -27,10 +27,20 @@ updates:
     commit-message:
       prefix: ci
 
-  # Dockerfile base image (docker/Dockerfile -> python:3.14.6-slim).
+  # Dockerfile base image (docker/Dockerfile -> python:3.14.x-slim).
   - package-ecosystem: docker
     directory: /docker
     schedule:
       interval: weekly
     commit-message:
       prefix: chore
+    # PATCH bumps only (3.14.6 -> 3.14.7), deliberately. The docker ecosystem matches TAGS, which carry
+    # no release-channel metadata, so the usual "pre-releases are not proposed unless you are already on
+    # one" guarantee does not apply here: python:3.14.6-slim -> python:3.15.0rc1-slim was scored an
+    # ordinary minor and auto-merged into this image (PR #14). A base-image minor is a runtime upgrade
+    # anyway — it deserves a deliberate change with the suite run against it, not an unattended merge.
+    ignore:
+      - dependency-name: "*"
+        update-types:
+          - version-update:semver-major
+          - version-update:semver-minor
