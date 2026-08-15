@@ -9,6 +9,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "04:00"
+      timezone: Europe/Skopje
     open-pull-requests-limit: 10
     commit-message:
       prefix: chore
@@ -24,6 +27,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+      day: monday
+      time: "05:00"
+      timezone: Europe/Skopje
     commit-message:
       prefix: ci
 
@@ -32,15 +38,28 @@ updates:
     directory: /docker
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Skopje
     commit-message:
       prefix: chore
-    # PATCH bumps only (3.14.6 -> 3.14.7), deliberately. The docker ecosystem matches TAGS, which carry
-    # no release-channel metadata, so the usual "pre-releases are not proposed unless you are already on
-    # one" guarantee does not apply here: python:3.14.6-slim -> python:3.15.0rc1-slim was scored an
-    # ordinary minor and auto-merged into this image (PR #14). A base-image minor is a runtime upgrade
-    # anyway — it deserves a deliberate change with the suite run against it, not an unattended merge.
-    ignore:
-      - dependency-name: "*"
-        update-types:
-          - version-update:semver-major
-          - version-update:semver-minor
+    # No update-type restriction: majors, minors and patches all flow, and the guard that matters
+    # for images -- blocking a RELEASE-CANDIDATE tag -- lives in dependabot-auto-merge.yml instead.
+    # It has to: `docker` matches TAGS, which carry no release-channel metadata, so
+    # `python:3.14.6-slim` -> `python:3.15.0rc1-slim` scores an ordinary MINOR, and
+    # `ignore.versions` takes version RANGES rather than globs (dependabot-core#15154), so
+    # "no pre-releases" cannot be written here at all.
+
+  # Compose files -- a SEPARATE ecosystem from `docker`, which does NOT cover them. Before this
+  # block existed the image tags in /docker were updated by nothing at all, because
+  # `docker` was configured and containers read as handled.
+  - package-ecosystem: docker-compose
+    directory: /docker
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Skopje
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: chore

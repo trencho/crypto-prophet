@@ -11,7 +11,7 @@ name: Security scan
 # Regenerate requirements.lock when requirements.txt changes.
 on:
   schedule:
-    - cron: "49 4 * * 1" # weekly, Monday 04:49 UTC
+    - cron: "33 7 * * 1" # weekly, Monday 07:33 UTC - fleet slot (minutes staggered per repo)
   push:
     branches: [master]
   pull_request:
