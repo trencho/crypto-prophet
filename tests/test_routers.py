@@ -9,8 +9,10 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+import api.app as app_module
 import api.routers.coins as coins_module
 import api.routers.forecast as forecast_module
+import api.routers.health as health_module
 
 
 @pytest.fixture
@@ -67,3 +69,46 @@ def test_forecast_endpoint_returns_list(monkeypatch, forecast_client):
     response = forecast_client.get("/forecast/")
     assert response.status_code == 200
     assert response.json() == list(forecast_result.values())
+
+
+def test_health_reports_ok():
+    """The liveness probe answers without any dependency being available."""
+    app = FastAPI()
+    app.include_router(health_module.health_router)
+    client = TestClient(app)
+
+    response = client.get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_health_answers_without_lifespan_having_run():
+    """Regression guard for the reason this route is mounted where it is.
+
+    The app registers its other routers inside `lifespan`, which then blocks on
+    `await fetch_data()`. A health route mounted there is unreachable for the whole of a
+    slow startup -- the one moment a probe is actually asking. So it must be attached to
+    the app object at import time.
+
+    Asserted by BEHAVIOUR, not by introspecting `app.routes`: FastAPI 0.140 stopped
+    flattening included routers into that list (it holds a single `_IncludedRouter`), so a
+    structural check silently stops meaning anything. TestClient only runs lifespan when
+    used as a context manager, so a plain get() here proves exactly the property claimed --
+    the endpoint answers with no startup having happened.
+    """
+    response = TestClient(app_module.app).get("/health")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+
+def test_root_describes_the_service():
+    app = FastAPI()
+    app.include_router(health_module.health_router)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert response.json()["service"] == "crypto-prophet"

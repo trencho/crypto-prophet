@@ -70,13 +70,17 @@ Serves via gunicorn + uvicorn workers behind traefik.
 
 - **Tests:** `pytest -q` (suite under `tests/`; data paths are redirected to a temp dir via `VOLUME_PATH`).
 - **Format:** `black .` (checked in CI).
-- **CI** (`.github/workflows/ci.yml`): black + compile-check + pytest on Python 3.14.
+- **Lint:** `ruff check .` (also checked in CI).
+- **CI** (`.github/workflows/ci.yml`): black + ruff + a lock-agreement check + compile-check +
+  pytest on Python 3.14. The lock check compares every pin in `requirements.txt` against
+  `requirements.lock` and fails on drift, because a stale lock means the security scan audits a
+  tree nobody runs. Dependabot bumps the manifest and never the lock, so a pip PR needs the
+  matching lock line updated before it can go green.
 - **Security:** a weekly OSV scan (`security-scan.yml`) reads `requirements.lock`; regenerate the lock
   (`uv pip compile requirements.txt -o requirements.lock`) whenever `requirements.txt` changes.
 - **Dependencies:** Dependabot opens weekly update PRs; patch/minor land automatically once CI is green.
 
 ## Roadmap
 
-- Add a `GET /health` (and root) endpoint — there is none today.
 - Decide Random Forest: re-enable it in the registry or remove the dead entry.
 - Make the startup CoinGecko fetch non-blocking / lazy so readiness isn't gated on a network pull.
