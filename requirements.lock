@@ -145,7 +145,7 @@ requests==2.34.2
     #   -r requirements.txt
     #   pycoingecko
     #   pygithub
-ruff==0.16.2
+ruff==0.16.3
     # via -r requirements.txt
 scikit-learn==1.9.0
     # via -r requirements.txt
@@ -188,7 +188,7 @@ urllib3==2.7.0
     #   -r requirements.txt
     #   pygithub
     #   requests
-uvicorn==0.52.1
+uvicorn==0.52.3
     # via -r requirements.txt
 xgboost==3.4.0
     # via -r requirements.txt
