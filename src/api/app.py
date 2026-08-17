@@ -13,6 +13,7 @@ from api.config import (
     register_routers,
     schedule_jobs,
 )
+from api.routers.health import health_router
 from definitions import app_dev, app_env, app_prod
 
 
@@ -34,5 +35,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# Mounted at import time, NOT inside lifespan with the others, and deliberately unprefixed.
+# register_routers() runs during startup and is followed by `await fetch_data()`, which blocks
+# until a network pull finishes -- so a health route registered there would be unavailable for
+# exactly as long as startup is slow, which is precisely when a probe is asked the question.
+app.include_router(health_router)
 if __name__ == "__main__":
     run("app:app", host="0.0.0.0", reload=True, reload_dirs="..")
