@@ -14,7 +14,7 @@ serves a 30-day price forecast over a small REST API.
   lowest-MAE model is retrained on the full data and pickled under `models/`. A model younger than one
   month is reused rather than retrained.
 - **Models** — Decision Tree, LightGBM, Linear, MLP, Support Vector, XGBoost (Random Forest is present
-  in the registry but currently disabled).
+  in the registry but disabled).
 - **Forecast** — `GET /api/v1/forecast/` runs a 30-step recursive prediction (each day's prediction
   feeds the next) and returns the merged series. Returns empty until a training run has produced models.
 - **Scheduling** — APScheduler runs the training, daily coin refresh, and an optional periodic dump of
@@ -22,10 +22,13 @@ serves a 30-day price forecast over a small REST API.
 
 ## API
 
-All routes are under `/api/v1`:
+The coin and forecast routes live under `/api/v1`; the two probe routes sit at the root, mounted at
+import time so they answer while startup is still fetching data:
 
 | Method | Path | Description |
 |---|---|---|
+| GET | `/` | service descriptor (name, docs path, API prefix) |
+| GET | `/health` | liveness probe; does no I/O, so a CoinGecko outage cannot report as this process being unhealthy |
 | GET | `/api/v1/coins/` | list all known coins |
 | GET | `/api/v1/coins/{coin_id}/` | one coin (404 if unknown) |
 | GET | `/api/v1/forecast/` | 30-day forecast points across the configured coins |
