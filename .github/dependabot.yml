@@ -43,12 +43,24 @@ updates:
       timezone: Europe/Skopje
     commit-message:
       prefix: chore
-    # No update-type restriction: majors, minors and patches all flow, and the guard that matters
-    # for images -- blocking a RELEASE-CANDIDATE tag -- lives in dependabot-auto-merge.yml instead.
-    # It has to: `docker` matches TAGS, which carry no release-channel metadata, so
-    # `python:3.14.6-slim` -> `python:3.15.0rc1-slim` scores an ordinary MINOR, and
-    # `ignore.versions` takes version RANGES rather than globs (dependabot-core#15154), so
-    # "no pre-releases" cannot be written here at all.
+    # Patches within the pinned line still flow. What is held is the MINOR, because on this
+    # ecosystem a Python minor is a runtime change that CI would not exercise.
+    #
+    # The pre-release guard in dependabot-auto-merge.yml already blocks `python:3.15.0rc1-slim`:
+    # `docker` matches TAGS, which carry no release-channel metadata, so an RC scores as an ordinary
+    # minor, and `ignore.versions` takes version RANGES rather than globs (dependabot-core#15154),
+    # so "no pre-releases" cannot be written here at all.
+    #
+    # But a STABLE `python:3.15.0-slim` is not a pre-release, so nothing stopped it: it would have
+    # auto-merged into the production image while ci.yml still installed 3.14 and the lock was still
+    # compiled `--python-version 3.14`. That is exactly how a sibling repo shipped a non-LTS Node to
+    # production on 2026-08-16 -- CI was green because CI tested a different runtime than the change
+    # was about. Hold the line, and move all three together when the runtime moves.
+    ignore:
+      # lift-when: manual ci.yml python-version, the requirements lock and docker/Dockerfile all
+      # move to 3.15 together; bump CI first and lift this once the suite is green on it.
+      - dependency-name: "python"
+        versions: [">=3.15"]
 
   # Compose files -- a SEPARATE ecosystem from `docker`, which does NOT cover them. Before this
   # block existed the image tags in /docker were updated by nothing at all, because
