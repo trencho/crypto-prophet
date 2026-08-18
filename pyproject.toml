@@ -11,3 +11,29 @@ select = ["F401", "F811"]
 [tool.ruff.lint.per-file-ignores]
 # Package __init__.py files intentionally re-export their public API; those imports are not "unused".
 "__init__.py" = ["F401"]
+
+# Configuration for deptry, which the monthly dependency-cleanup job runs.
+#
+# Without this, its report is almost entirely false positives -- and a report that is mostly
+# noise trains everyone to stop reading it, which costs more than having no report at all.
+# Everything suppressed here is suppressed because deptry CANNOT see the usage by static
+# analysis, never because the finding was inconvenient.
+[tool.deptry]
+# The application packages live under src/ and are imported as top-level names (`api`,
+# `models`, ...). Without this, every one of them is reported as an undeclared dependency.
+known_first_party = ["api", "definitions", "modeling", "models", "preparation", "processing", "visualization"]
+
+[tool.deptry.package_module_name_map]
+# Distribution name != import name: `pip install PyGithub` provides `import github`.
+PyGithub = ["github"]
+
+[tool.deptry.per_rule_ignores]
+# DEP002 = "declared but not imported". Each of these is genuinely used, just not by an
+# `import` statement that deptry can find:
+#   gunicorn - the production entrypoint runs `gunicorn main:app`; it is a command, not an import
+#   black    - formatter, invoked by CI and pre-commit
+#   ruff     - linter, invoked by CI as `ruff check src tests definitions.py main.py`
+#   pytest   - test runner, invoked as a command
+#   httpx    - required by fastapi's TestClient at runtime, imported only inside FastAPI
+#   orjson   - backs ORJSONResponse, imported by FastAPI rather than by this codebase
+DEP002 = ["gunicorn", "black", "ruff", "pytest", "httpx", "orjson"]
