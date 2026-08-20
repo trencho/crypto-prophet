@@ -81,7 +81,9 @@ Serves via gunicorn + uvicorn workers behind traefik.
   matching lock line updated before it can go green.
 - **Security:** a weekly OSV scan (`security-scan.yml`) reads `requirements.lock`; regenerate the lock
   (`uv pip compile requirements.txt -o requirements.lock`) whenever `requirements.txt` changes.
-- **Dependencies:** Dependabot opens weekly update PRs; patch/minor land automatically once CI is green.
+- **Dependencies:** Dependabot opens weekly update PRs; **every update type auto-merges once CI is
+  green, majors included** -- majors simply arrive in their own PR rather than grouped, so a
+  breaking change is reviewable in isolation. With no reviewer in the loop, CI is the entire gate.
 
 ## Roadmap
 
