@@ -1,5 +1,8 @@
-# Dependabot version updates. Grouping minor+patch keeps majors in their own PR (excluded from
-# auto-merge). Dependabot updates requirements.txt (the install source of truth); it does NOT know
+# Dependabot version updates. Grouping minor+patch keeps majors in their own PR, so a breaking
+# change lands on its own and is reviewable in isolation -- but every update type auto-merges
+# once CI is green, majors included. CI is therefore the entire gate; see
+# dependabot-auto-merge.yml, whose own header says the same.
+# Dependabot updates requirements.txt (the install source of truth); it does NOT know
 # about requirements.lock, so regenerate the lock (uv pip compile / pip-compile) when a bump lands
 # — the OSV security scan reads the lock.
 version: 2
