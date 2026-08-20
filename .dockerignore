@@ -1,0 +1,51 @@
+# The Dockerfile does `COPY . .` in the FINAL stage, so anything not excluded here is baked into
+# the published image. That is what makes this file load-bearing rather than a build-speed tweak.
+#
+# `.claude/` is the pointed one: this is a public repo whose Claude memory is deliberately
+# local-only (git-ignored via .git/info/exclude, never committed). Without this entry a LOCAL
+# `docker build` would copy that memory -- session logs, audit reports, STATE.md -- straight into
+# an image layer, bypassing every git-side control that keeps it out of the repo. CI is unaffected,
+# because it builds from a fresh checkout where `.claude/` does not exist; the exposure is the day
+# someone builds and pushes from a working copy.
+
+# Claude / workbench memory -- see above. Local-only by policy; must never reach an image.
+.claude
+CLAUDE.md
+
+# VCS and CI
+.git
+.gitignore
+.gitattributes
+.github
+
+# Local data and generated artifacts. Large, machine-specific, and regenerated at runtime.
+data
+models
+results
+logs
+
+# Python build and cache noise
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.venv
+venv
+
+# Tests do not run in the image
+tests
+
+# Editor and OS
+.idea
+.vscode
+.DS_Store
+
+# Env files: the image takes configuration from the environment, not from a baked-in file.
+.env
+.env.*
+
+# Docs
+README.md
+LICENSE

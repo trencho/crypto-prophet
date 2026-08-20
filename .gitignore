@@ -181,3 +181,7 @@ data/
 /models/
 results/
 !.gitkeep
+# Environment file: configuration comes from the environment, never a committed file.
+# It was tracked and empty; a tracked .env is a pattern that invites a secret later.
+.env
+.env.*
