@@ -20,8 +20,6 @@ from models.base_regression_model import BaseRegressionModel
 from .feature_generation import (
     encode_categorical_data,
     generate_features,
-    generate_lag_features,
-    generate_time_features,
 )
 from .feature_scaling import value_scaling
 
@@ -78,63 +76,15 @@ def load_regression_model(coin_symbol: str):
     return model, model_features
 
 
-def direct_forecast(
-    y, model, lags=FORECAST_STEPS, n_steps=FORECAST_STEPS, step=FORECAST_PERIOD
-) -> Series:
-    """Multistep direct forecasting using a machine learning model to forecast each time period ahead
-
-    Parameters
-    ----------
-    y: pd.Series holding the input time-series to forecast
-    model: A model for iterative training
-    lags: List of lags used for training the model
-    n_steps: Number of time periods in the forecasting horizon
-    step: The period of forecasting
-
-    Returns
-    -------
-    forecast_values: pd.Series with forecasted values indexed by forecast horizon dates
-    """
-
-    def one_step_features(date, step):
-        # Features must be obtained using data lagged by the desired number of steps (the for loop index)
-        tmp = y[y.index <= date]
-        lags_features = generate_lag_features(tmp, lags)
-        time_features = generate_time_features(tmp)
-        features = lags_features.join(time_features, how="inner").dropna()
-
-        # Build target to be ahead of the features built by the desired number of steps (the for loop index)
-        target = y[y.index >= features.index[0] + Timedelta(days=step)]
-        assert len(features.index) == len(target.index)
-
-        return features, target
-
-    forecast_values = []
-    forecast_range = date_range(
-        y.index[-1] + Timedelta(days=1), periods=n_steps, freq=step
-    )
-    forecast_features, _ = one_step_features(y.index[-1], 0)
-
-    for s in range(1, n_steps + 1):
-        last_date = y.index[-1] - Timedelta(days=s)
-        features, target = one_step_features(last_date, s)
-
-        model.train(features, target)
-
-        # Use the model to predict s steps ahead
-        predictions = model.predict(forecast_features)
-        forecast_values.append(predictions[-1])
-
-    return Series(forecast_values, forecast_range)
-
-
 def recursive_forecast(
     coin_symbol: str,
     model: BaseRegressionModel,
     model_features: list,
     lags: int = FORECAST_STEPS,
     n_steps: int = FORECAST_STEPS,
-    step: int = FORECAST_PERIOD,
+    # A pandas frequency string (FORECAST_PERIOD is "1D"), not a count of periods.
+    # This was annotated `int`, which is the annotation being wrong rather than the value.
+    step: str = FORECAST_PERIOD,
 ) -> Series:
     """Multistep recursive forecasting using the input time series data and a pre-trained machine learning model
 
