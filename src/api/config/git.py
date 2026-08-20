@@ -66,6 +66,12 @@ async def commit_git_files(
         commit = repo.create_git_commit(commit_message, tree, [parent])
         master_ref.edit(commit.sha)
     except (GithubException, ReadTimeout, ReadTimeoutError):
+        # Split and retry: a tree too large for one request succeeds as two halves.
+        #
+        # But a list of ONE cannot be split -- `1 // 2` is 0 -- so the old code fell through to
+        # print_exc() and returned as though it had committed. A scheduled data dump lost that
+        # file silently. print_exc() also fired even when the split retry had SUCCEEDED, so the
+        # log could not distinguish the two.
         if len(element_list) // 2 > 0:
             await commit_git_files(
                 repo,
@@ -83,7 +89,11 @@ async def commit_git_files(
                 commit_message,
                 element_list[len(element_list) // 2 :],
             )
+            return
+        # Unsplittable, so this one genuinely failed. Raise rather than print: the caller has
+        # to be able to tell a completed dump from a partial one.
         print_exc()
+        raise
 
 
 def create_archive(source, destination):
@@ -115,8 +125,16 @@ async def update_git_files(
     file_names: list,
     repo_name: str,
     branch: str,
-    commit_message: str = f"Data Updated - {datetime.now().strftime('%H:%M:%S %d-%m-%Y')}",
+    # None, not a formatted timestamp: a default argument is evaluated ONCE, when the module
+    # is imported, so the old default froze the commit message at process start. Every commit
+    # from a long-running process would have claimed the same time. Both call sites pass one
+    # explicitly today, which is the only reason this was latent rather than live.
+    commit_message: str | None = None,
 ) -> None:
+    if commit_message is None:
+        commit_message = (
+            f"Data Updated - {datetime.now().strftime('%H:%M:%S %d-%m-%Y')}"
+        )
     repo = g.get_repository(repo_name)
     master_ref = repo.get_git_ref(f"heads/{branch}")
     master_sha = master_ref.object.sha

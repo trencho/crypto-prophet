@@ -31,10 +31,19 @@ system_paths = [
 
 
 def check_environment_variables() -> None:
-    for environment_variable in environment_variables:
-        if environ.get(environment_variable) is None:
-            print(f'The environment variable "{environment_variable}" is missing')
-            exit(-1)
+    """Raise when a required environment variable is unset.
+
+    Raises rather than calling ``exit``: this runs inside the ASGI lifespan, where a
+    ``SystemExit`` unwinds through the server's startup machinery instead of being reported as
+    the configuration error it is. ``exit`` is also a ``site`` builtin and simply does not
+    exist under ``python -S``. Reporting every missing variable at once beats failing on the
+    first, so a misconfigured deployment needs one restart rather than one per variable.
+    """
+    missing = [name for name in environment_variables if environ.get(name) is None]
+    if missing:
+        raise RuntimeError(
+            "Missing required environment variable(s): " + ", ".join(missing)
+        )
 
 
 async def fetch_data() -> None:
