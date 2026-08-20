@@ -13,12 +13,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
 # Install system dependencies.
-RUN apt update && \
-    apt upgrade -y && \
-    apt dist-upgrade -y && \
-    apt install -y --no-install-recommends libgomp1 nginx tzdata && \
-    apt autoclean clean && \
-    apt autoremove -y && \
+#
+# `apt-get`, not `apt`: apt's CLI is explicitly not stable for scripting and says so on every run.
+#
+# No `upgrade`/`dist-upgrade`. They defeat the pinned base image -- the same tag would produce a
+# different package tree on every build, which is exactly what pinning exists to prevent, and it
+# makes a failure impossible to reproduce from the tag alone. System-package currency comes from
+# moving the pinned base image instead, which Dependabot does in a reviewable PR.
+#
+# nginx dropped: installed and referenced by nothing. No file in this repo configures or starts it
+# -- the app is served by gunicorn behind traefik, per docker-compose.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgomp1 tzdata && \
+    apt-get clean && \
+    apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Set the working directory
