@@ -90,7 +90,7 @@ numpy==2.5.2
     #   seaborn
     #   statsmodels
     #   xgboost
-orjson==3.11.9
+orjson==3.12.0
     # via -r requirements.txt
 packaging==26.3
     # via
@@ -190,5 +190,5 @@ urllib3==2.7.0
     #   requests
 uvicorn==0.52.3
     # via -r requirements.txt
-xgboost==3.4.0
+xgboost==3.4.1
     # via -r requirements.txt
