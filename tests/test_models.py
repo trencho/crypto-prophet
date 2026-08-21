@@ -22,7 +22,11 @@ def test_make_model_known_and_unknown():
     model = asyncio.run(make_model("LinearRegressionModel"))
     assert isinstance(model, LinearRegressionModel)
 
-    with pytest.raises(Exception):
+    # `pytest.raises(Exception)` alone accepted any failure at all -- a TypeError or
+    # ImportError from a factory broken on the lookup-miss path satisfied it just as well as
+    # the intended rejection. `match` pins the message, which only the intended path produces.
+    # (make_model raises a bare Exception; narrowing that type is a separate change.)
+    with pytest.raises(Exception, match="The agent name NoSuchModel does not exist"):
         asyncio.run(make_model("NoSuchModel"))
 
 
