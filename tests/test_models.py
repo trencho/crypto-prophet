@@ -5,7 +5,7 @@ import asyncio
 import pytest
 from numpy import allclose, arange, column_stack
 
-from models import get_model_class, make_model, UnknownModelError
+from models import __all__, get_model_class, make_model, UnknownModelError
 from models.linear_regression import LinearRegressionModel
 
 
@@ -79,3 +79,36 @@ def test_model_save_load_roundtrip(models_dir):
     actual = restored.predict(x)
 
     assert allclose(actual, expected)
+
+
+def test_every_registered_model_accepts_its_own_param_grid():
+    """Each model's param_grid must actually be valid for the estimator it configures.
+
+    ``RandomizedSearchCV`` validates a parameter only when it SAMPLES it, so an invalid value sits
+    dormant until a search happens to pick it -- and then fails inside a training run, not at
+    construction. ``RandomForestRegressionModel`` shipped ``max_features="auto"``, removed in
+    scikit-learn 1.3 against a 1.9 pin, and nothing caught it.
+
+    ``set_params`` performs the same validation without fitting, so this walks every value in every
+    registry entry's grid and is still fast.
+    """
+
+    from sklearn.base import clone
+
+    for name in __all__:
+        model = asyncio.run(make_model(name))
+        for parameter, values in model.param_grid.items():
+            for value in values:
+                estimator = clone(model.reg)
+                try:
+                    estimator.set_params(**{parameter: value})
+                except (
+                    Exception
+                ) as error:  # pragma: no cover - the failure message is the point
+                    raise AssertionError(
+                        f"{name}.param_grid[{parameter!r}] contains {value!r}, "
+                        f"which {type(model.reg).__name__} rejects: {error}"
+                    ) from error
+
+    # Guard the guard: a registry that walked nothing would pass silently.
+    assert len(__all__) >= 6
