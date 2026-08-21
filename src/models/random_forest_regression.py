@@ -14,7 +14,10 @@ class RandomForestRegressionModel(BaseRegressionModel):
             "max_depth": max_depth,
             "min_samples_split": [2, 5, 10],
             "min_samples_leaf": [1, 2, 4],
-            "max_features": ["auto", "sqrt"],
+            # 1.0 (= all features) is what "auto" MEANT for a regressor; the literal was
+            # removed in scikit-learn 1.3 and this project pins 1.9, so sampling it raised
+            # InvalidParameterError mid-search rather than at construction.
+            "max_features": [1.0, "sqrt"],
             "bootstrap": [True, False],
         }
         super().__init__(reg, param_grid)
