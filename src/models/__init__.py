@@ -17,15 +17,26 @@ __all__ = [
 ]
 
 
+class UnknownModelError(ValueError):
+    """Raised when a model name is not in the registry.
+
+    A real type rather than a bare ``Exception``: the lookup-miss path is the only failure these
+    factories are meant to produce, and a test asserting ``pytest.raises(Exception)`` could not tell
+    it apart from a TypeError or an ImportError raised by a factory broken some other way.
+
+    Subclasses ``ValueError`` because an unknown name is a bad argument, and because the one caller
+    (``modeling.train_model``) catches broadly and logs -- so narrowing the type changes nothing at
+    runtime while making the failure nameable in a test.
+    """
+
+
 async def get_model_class(model):
-    if model in __all__:
-        return globals()[model]
-    else:
-        raise Exception(f"The agent name {model} does not exist")
+    if model not in __all__:
+        raise UnknownModelError(f"The agent name {model} does not exist")
+    return globals()[model]
 
 
 async def make_model(model):
-    if model in __all__:
-        return globals()[model]()
-    else:
-        raise Exception(f"The agent name {model} does not exist")
+    # Delegates so the registry lookup and its error message exist once. The two used to be
+    # byte-identical apart from the trailing `()`, which is how they came to share a defect.
+    return (await get_model_class(model))()

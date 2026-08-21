@@ -5,7 +5,7 @@ import asyncio
 import pytest
 from numpy import allclose, arange, column_stack
 
-from models import make_model
+from models import get_model_class, make_model, UnknownModelError
 from models.linear_regression import LinearRegressionModel
 
 
@@ -22,12 +22,35 @@ def test_make_model_known_and_unknown():
     model = asyncio.run(make_model("LinearRegressionModel"))
     assert isinstance(model, LinearRegressionModel)
 
-    # `pytest.raises(Exception)` alone accepted any failure at all -- a TypeError or
-    # ImportError from a factory broken on the lookup-miss path satisfied it just as well as
-    # the intended rejection. `match` pins the message, which only the intended path produces.
-    # (make_model raises a bare Exception; narrowing that type is a separate change.)
-    with pytest.raises(Exception, match="The agent name NoSuchModel does not exist"):
+    # Both the TYPE and the message. `pytest.raises(Exception)` alone accepted any failure at
+    # all -- a TypeError or ImportError from a factory broken some other way satisfied it just as
+    # well as the intended rejection.
+    with pytest.raises(
+        UnknownModelError, match="The agent name NoSuchModel does not exist"
+    ):
         asyncio.run(make_model("NoSuchModel"))
+
+
+def test_get_model_class_returns_the_class_without_instantiating():
+    # Had no test at all. It is the half of the registry that callers use when they want to
+    # inspect or subclass a model rather than build one, and it shares make_model's lookup.
+    cls = asyncio.run(get_model_class("LinearRegressionModel"))
+
+    assert cls is LinearRegressionModel
+    assert isinstance(cls(), LinearRegressionModel)
+
+
+def test_get_model_class_rejects_an_unknown_name():
+    with pytest.raises(
+        UnknownModelError, match="The agent name NoSuchModel does not exist"
+    ):
+        asyncio.run(get_model_class("NoSuchModel"))
+
+
+def test_unknown_model_error_is_a_value_error():
+    # The base class is part of the contract: `modeling.train_model` catches broadly, and any
+    # caller narrowing to ValueError must keep catching this.
+    assert issubclass(UnknownModelError, ValueError)
 
 
 def test_model_train_predict_shape():
