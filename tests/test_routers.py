@@ -5,6 +5,10 @@ router pulled in at import time (``check_coin`` / ``fetch_forecast_result``) is
 monkeypatched so nothing touches the network or the filesystem.
 """
 
+import asyncio
+from asyncio import Event
+from logging import ERROR
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -112,3 +116,54 @@ def test_root_describes_the_service():
 
     assert response.status_code == 200
     assert response.json()["service"] == "crypto-prophet"
+
+
+def test_startup_does_not_wait_for_the_data_warm_up(monkeypatch):
+    """Startup must complete while the CoinGecko pull is still running.
+
+    `fetch_data` walks the whole coin list with a one-second sleep per coin. Awaiting it in
+    `lifespan` gated readiness on that pull, so the app was unreachable for minutes at exactly
+    the moment a probe asks. Asserted by BEHAVIOUR: a warm-up that never finishes must not stop
+    lifespan from completing, which is the property that regressed before.
+
+    A wall-clock assertion would only prove "fast", and fast is what a network call is on a good
+    day. Blocking on an event that is never set is the whole failure and it cannot pass by luck.
+    """
+    started = Event()
+    release = Event()
+
+    async def never_finishes():
+        started.set()
+        await release.wait()
+
+    monkeypatch.setattr(app_module, "fetch_data", never_finishes)
+    monkeypatch.setattr(app_module, "register_routers", lambda app: None)
+    monkeypatch.setattr(app_module, "configure_gc", lambda: None)
+    monkeypatch.setattr(app_module, "init_system_paths", lambda: None)
+    monkeypatch.setattr(app_module, "configure_logger", lambda: None)
+
+    with TestClient(app_module.app) as client:
+        # Reached only because lifespan returned without awaiting the warm-up.
+        assert client.get("/health").status_code == 200
+        assert started.is_set(), "the warm-up should have been started, not skipped"
+
+    release.set()
+
+
+def test_a_failing_warm_up_is_logged_and_does_not_break_startup(monkeypatch, caplog):
+    """A background task has no caller to notice it raised, so it logs or it is invisible.
+
+    Without this the app would serve requests over an empty cache and report itself healthy --
+    worse than the blocking startup it replaced, because nothing anywhere would say why.
+    """
+
+    async def explodes():
+        raise RuntimeError("coingecko is down")
+
+    monkeypatch.setattr(app_module, "fetch_data", explodes)
+
+    with caplog.at_level(ERROR):
+        asyncio.run(app_module._warm_up_data())
+
+    assert "warm-up failed" in caplog.text
+    assert "coingecko is down" in caplog.text
