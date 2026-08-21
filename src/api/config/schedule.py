@@ -81,9 +81,14 @@ async def update_coin_info() -> None:
             Path(DATA_EXTERNAL_PATH) / coin["symbol"] / "data.csv"
         )
         last_timestamp = coin_dataframe["time"].iloc[-1]
+        # Inclusive on the boundary. CoinGecko returns a rolling window that overlaps what is
+        # already on disk, and the last stored candle is in every one of them -- so a strict `<`
+        # kept that row and appended it a second time on EVERY run, duplicating one reading per
+        # coin per night. The duplicate is not visually obvious in a long series, which is why
+        # this survived until the job was driven by a test.
         updated_coin_dataframe = updated_coin_dataframe.drop(
             index=updated_coin_dataframe.loc[
-                updated_coin_dataframe["time"] < last_timestamp
+                updated_coin_dataframe["time"] <= last_timestamp
             ].index,
             errors="ignore",
         )
