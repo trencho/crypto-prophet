@@ -82,33 +82,53 @@ def test_model_save_load_roundtrip(models_dir):
 
 
 def test_every_registered_model_accepts_its_own_param_grid():
-    """Each model's param_grid must actually be valid for the estimator it configures.
+    """Each model's param_grid must hold values the estimator it configures actually accepts.
 
     ``RandomizedSearchCV`` validates a parameter only when it SAMPLES it, so an invalid value sits
-    dormant until a search happens to pick it -- and then fails inside a training run, not at
+    dormant until a search happens to pick it -- and then fails inside a training run rather than at
     construction. ``RandomForestRegressionModel`` shipped ``max_features="auto"``, removed in
     scikit-learn 1.3 against a 1.9 pin, and nothing caught it.
 
-    ``set_params`` performs the same validation without fitting, so this walks every value in every
-    registry entry's grid and is still fast.
-    """
+    ``_validate_params()`` is what scikit-learn itself calls at the start of ``fit``, so it gives the
+    real verdict without paying for a fit. ``set_params`` alone does NOT validate -- the first
+    version of this test used it, passed happily with ``"auto"`` restored, and was exactly the
+    vacuous guard it exists to prevent.
 
+    Scope, stated because it is not total: only scikit-learn-native estimators expose that hook.
+    LightGBM and XGBoost wrap their own C++ validation and are skipped, which the counters below
+    make visible rather than silent.
+    """
     from sklearn.base import clone
+
+    validated_models, skipped_models, checked_values = [], [], 0
 
     for name in __all__:
         model = asyncio.run(make_model(name))
+        if not hasattr(type(model.reg), "_parameter_constraints"):
+            skipped_models.append(f"{name} ({type(model.reg).__name__})")
+            continue
+        validated_models.append(name)
         for parameter, values in model.param_grid.items():
             for value in values:
                 estimator = clone(model.reg)
                 try:
                     estimator.set_params(**{parameter: value})
-                except (
-                    Exception
-                ) as error:  # pragma: no cover - the failure message is the point
+                    estimator._validate_params()
+                    checked_values += 1
+                except Exception as error:
                     raise AssertionError(
                         f"{name}.param_grid[{parameter!r}] contains {value!r}, "
                         f"which {type(model.reg).__name__} rejects: {error}"
                     ) from error
 
-    # Guard the guard: a registry that walked nothing would pass silently.
+    print(
+        f"validated {validated_models}; skipped (not sklearn-native): {skipped_models}"
+    )
+
+    # Guard the guard: a registry that walked nothing, or a hook that vanished from every
+    # estimator, would otherwise pass in silence.
     assert len(__all__) >= 6
+    assert (
+        validated_models
+    ), "no estimator exposed _parameter_constraints -- the check is inert"
+    assert checked_values > 20, f"only {checked_values} values validated"
