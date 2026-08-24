@@ -1,7 +1,7 @@
 APScheduler==3.11.3
 black==26.5.1
 fastapi==0.141.1
-gunicorn==26.0.0
+gunicorn==26.1.0
 httpx==0.28.1
 lightgbm==4.7.0
 matplotlib==3.11.1
@@ -9,14 +9,14 @@ numpy==2.5.2
 orjson==3.12.0
 pandas==3.0.5
 pycoingecko==3.2.0
-PyGithub==2.9.1
+PyGithub==2.10.0
 pytest==9.1.1
 requests==2.34.2
-ruff==0.16.3
+ruff==0.16.4
 scikit-learn==1.9.0
 scipy==1.18.0
 seaborn==0.13.2
 statsmodels==0.14.6
 urllib3==2.7.0
-uvicorn==0.52.3
+uvicorn==0.52.4
 xgboost==3.4.1
