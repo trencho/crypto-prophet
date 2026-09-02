@@ -85,7 +85,3 @@ Serves via gunicorn + uvicorn workers behind traefik.
   green, majors included** -- majors simply arrive in their own PR rather than grouped, so a
   breaking change is reviewable in isolation. With no reviewer in the loop, CI is the entire gate.
 
-## Roadmap
-
-- Decide Random Forest: re-enable it in the registry or remove the dead entry.
-- Make the startup CoinGecko fetch non-blocking / lazy so readiness isn't gated on a network pull.
