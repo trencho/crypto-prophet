@@ -93,6 +93,8 @@ cover/
 
 # Django stuff:
 *.log
+# TimedRotatingFileHandler writes app.log.<date>, which *.log above does not match.
+/logs/
 local_settings.py
 db.sqlite3
 db.sqlite3-journal

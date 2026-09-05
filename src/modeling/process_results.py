@@ -1,3 +1,4 @@
+from logging import getLogger
 from math import isinf
 from pathlib import Path
 from typing import Optional
@@ -7,6 +8,8 @@ from pandas import DataFrame, Series
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 from definitions import RESULTS_ERRORS_PATH, RESULTS_PREDICTIONS_PATH
+
+logger = getLogger(__name__)
 
 
 def filter_invalid_values(y_true: Series, y_predicted: Series) -> tuple:
@@ -57,6 +60,13 @@ def save_errors(
 
         return mae
     except Exception:
+        # inf means 'worst possible', and generate_regression_model compares it against the
+        # best error so far - so a genuine defect in here and a legitimately terrible model
+        # were indistinguishable, silently. If it fires for EVERY model, best_model stays
+        # None and the training run completes having saved nothing.
+        logger.exception(
+            "error metrics failed for %s/%s; scoring it as inf", coin_symbol, model_name
+        )
         return inf
 
 

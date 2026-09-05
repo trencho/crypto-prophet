@@ -60,8 +60,10 @@ updates:
     # production on 2026-08-16 -- CI was green because CI tested a different runtime than the change
     # was about. Hold the line, and move all three together when the runtime moves.
     ignore:
-      # lift-when: manual ci.yml python-version, the requirements lock and docker/Dockerfile all
-      # move to 3.15 together; bump CI first and lift this once the suite is green on it.
+      # Kept to ONE line on purpose: dependency-cleanup.yml extracts the condition with a
+      # single-line grep, so a wrapped one is truncated in the monthly issue and loses exactly the
+      # half that says what to do. Reproduced: the report printed "...and docker/Dockerfile all".
+      # lift-when: manual move ci.yml python-version, requirements.lock, docker/Dockerfile and pyproject target-version to 3.15 together; bump CI first, lift once the suite is green
       - dependency-name: "python"
         versions: [">=3.15"]
 

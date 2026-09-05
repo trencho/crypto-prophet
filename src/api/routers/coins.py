@@ -12,7 +12,10 @@ coins_router = APIRouter(tags=["coins"])
 
 
 @coins_router.get("/coins/")
-async def fetch_coins() -> ORJSONResponse:
+def fetch_coins() -> ORJSONResponse:
+    # `def`, not `async def`: read_csv plus a whole-list JSON encode is synchronous work,
+    # and on the event loop it blocks every other request on this worker. Same reason as
+    # the forecast route.
     return ORJSONResponse(
         jsonable_encoder(
             read_csv(Path(DATA_EXTERNAL_PATH) / "coin_list.csv").to_dict("records")
