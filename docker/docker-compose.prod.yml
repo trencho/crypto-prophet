@@ -8,6 +8,15 @@ services:
     command: gunicorn main:app --bind 0.0.0.0:5000 -w 4 -k uvicorn.workers.UvicornWorker
     expose:
       - 5000
+    # /health exists and is mounted at import time so it answers during a slow startup, but
+    # nothing consumed it. start_period covers the CoinGecko warm-up, which runs in the
+    # background and can leave the data routes 500ing for its duration.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/health', timeout=3).status == 200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     labels:
       - 'traefik.enable=true'
       - 'traefik.http.routers.fastapi.rule=Host(`subdomain.example.com`)'

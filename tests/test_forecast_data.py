@@ -9,10 +9,8 @@ The model is a stub implementing only `predict`, which is the whole scikit-learn
 function uses. A real estimator here would test scikit-learn, not this code.
 """
 
-from pathlib import Path
-
 from numpy import isnan
-from pandas import DataFrame, date_range
+from pandas import DataFrame, Timedelta, date_range, to_datetime
 
 from processing import forecast_data as fd
 
@@ -71,15 +69,28 @@ def test_the_forecast_has_one_value_per_requested_step(monkeypatch, tmp_path):
 def test_the_forecast_is_indexed_by_dates_after_the_last_observation(
     monkeypatch, tmp_path
 ):
-    """R4: an off-by-one here silently forecasts a day already in the data."""
+    """R4: an off-by-one here silently forecasts a day already in the data.
+
+    The expected range is anchored to the LAST OBSERVED date, not to the result's own first
+    element. Building it from `result.index[0]` made the assertion tautological: it could only
+    check that three consecutive daily stamps existed, never where they started, so a mutation
+    starting the forecast five days BEFORE the last observation passed. That is the exact defect
+    the docstring names.
+    """
     result = _run(monkeypatch, tmp_path, RecordingModel(), n_steps=3)
 
-    external = Path(str(tmp_path / "external"))
+    # _write_series writes 40 daily rows from a fixed epoch, so the last observation and the first
+    # forecast date are both computable without consulting the result.
+    last_observed = to_datetime(
+        1_700_000_000_000 + 39 * 86_400_000, unit="ms"
+    ).normalize()
+    expected_first = last_observed + Timedelta(days=1)
+
+    assert result.index[0].normalize() == expected_first
     assert list(result.index) == list(
         date_range(result.index[0], periods=3, freq=fd.FORECAST_PERIOD)
     )
     assert result.index.is_monotonic_increasing
-    assert external.exists()
 
 
 def test_each_step_predicts_on_a_series_grown_by_the_previous_prediction(
@@ -100,6 +111,22 @@ def test_each_step_predicts_on_a_series_grown_by_the_previous_prediction(
     assert (
         lengths == sorted(lengths) and lengths[0] < lengths[-1]
     ), f"each step should see one more row than the last, got {lengths}"
+
+    # Lengths alone do not prove the feed-back: the frames still grow if the appended value is a
+    # constant, or zero, and a mutation replacing the fed-back prediction with 0.0 survived this
+    # test on exactly that. Assert the VALUE that came back.
+    #
+    # `_run` stubs generate_features to `lag_1 = target.values`, so the last row of each frame is
+    # the most recently appended point. From step 2 onward that point is the previous prediction.
+    fed_back = [frame["lag_1"].iloc[-1] for frame in model.seen[1:]]
+    assert fed_back == [model.value] * 3, (
+        f"each step after the first must see the previous prediction ({model.value}) as its most "
+        f"recent point, got {fed_back}"
+    )
+    # And the first step must NOT see a fabricated point: it predicts from real data only.
+    assert (
+        model.seen[0]["lag_1"].iloc[-1] == 139.0
+    ), "the first step should predict from the last OBSERVED value, not from a placeholder"
 
 
 def test_a_model_that_rejects_the_features_yields_nan_rather_than_raising(

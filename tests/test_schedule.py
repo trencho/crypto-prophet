@@ -6,6 +6,8 @@ collaborators are replaced, which is what makes the guards observable at all.
 """
 
 import asyncio
+import os
+import time
 from pathlib import Path
 
 from pandas import DataFrame, read_csv
@@ -58,14 +60,26 @@ def test_dump_data_commits_the_archives_it_built(monkeypatch, tmp_path):
 def test_model_training_clears_stale_locks_and_trains_only_configured_coins(
     monkeypatch, tmp_path
 ):
-    """Two guarantees in one job, and both are silent when broken.
+    """Three guarantees in one job, and all three are silent when broken.
 
-    A `.lock` left behind blocks the next training run forever; training a coin outside `coins`
-    burns a slot on data the app never serves.
+    A STALE `.lock` left behind blocks the next training run forever. A FRESH one must survive:
+    it belongs to a run that is still going, and this job used to delete every lock it found,
+    which destroyed the only cross-process interlock the design has. With `gunicorn -w 4` there
+    are four schedulers, so one worker's tick was removing another worker's in-flight lock.
+    Third: training a coin outside `coins` burns a slot on data the app never serves.
     """
     models = tmp_path / "models"
     models.mkdir()
-    (models / "bitcoin.lock").write_text("", encoding="utf-8")
+    stale = models / "bitcoin.lock"
+    stale.write_text("", encoding="utf-8")
+    # Backdate it past the reap window. Age is the only thing that distinguishes a crashed run
+    # from a live one, so it is the only thing the job may act on.
+    old = time.time() - schedule_module._STALE_LOCK_SECONDS - 60
+    os.utime(stale, (old, old))
+
+    fresh = models / "ethereum.lock"
+    fresh.write_text("", encoding="utf-8")
+
     (models / "keep.txt").write_text("", encoding="utf-8")
 
     external = tmp_path / "external"
@@ -86,7 +100,11 @@ def test_model_training_clears_stale_locks_and_trains_only_configured_coins(
 
     asyncio.run(schedule_module.model_training())
 
-    assert not (models / "bitcoin.lock").exists(), "the stale lock was not cleared"
+    assert not stale.exists(), "the stale lock was not cleared"
+    assert fresh.exists(), (
+        "a FRESH lock was deleted: that lock belongs to a run still in progress, and removing it "
+        "lets a second worker train the same coin against the same files"
+    )
     assert (models / "keep.txt").exists(), "a non-lock file must be left alone"
     assert trained == ["bitcoin"], f"trained the wrong set: {trained}"
 

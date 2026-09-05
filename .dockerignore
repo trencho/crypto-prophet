@@ -1,16 +1,18 @@
 # The Dockerfile does `COPY . .` in the FINAL stage, so anything not excluded here is baked into
 # the published image. That is what makes this file load-bearing rather than a build-speed tweak.
 #
-# `.claude/` is the pointed one: this is a public repo whose Claude memory is deliberately
-# local-only (git-ignored via .git/info/exclude, never committed). Without this entry a LOCAL
-# `docker build` would copy that memory -- session logs, audit reports, STATE.md -- straight into
-# an image layer, bypassing every git-side control that keeps it out of the repo. CI is unaffected,
-# because it builds from a fresh checkout where `.claude/` does not exist; the exposure is the day
-# someone builds and pushes from a working copy.
-
-# Claude / workbench memory -- see above. Local-only by policy; must never reach an image.
-.claude
-CLAUDE.md
+# Dot-entries are the pointed case. A working copy accumulates local editor, tool and assistant
+# state in dot-directories that are git-ignored and therefore invisible to every git-side control,
+# but `COPY . .` does not consult .gitignore -- so a LOCAL build would bake that state into a
+# published image layer. CI is unaffected, because it builds from a fresh checkout that has none of
+# it; the exposure is the day someone builds and pushes from their own working copy.
+#
+# Excluded generically rather than by name, and that is deliberate: this file is COMMITTED, so an
+# entry naming a specific tool would publish exactly the reference the exclusion exists to avoid.
+# Nothing the image needs lives in a dot-entry -- the build uses only requirements.txt (bind-mounted
+# above) and the source tree.
+.*
+**/.*
 
 # VCS and CI
 .git

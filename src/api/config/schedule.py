@@ -3,6 +3,7 @@ from base64 import b64encode
 from datetime import datetime
 from os import environ, path, remove, walk
 from pathlib import Path
+from time import time
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from pandas import DataFrame, concat, json_normalize, read_csv
@@ -12,6 +13,11 @@ from definitions import coins, DATA_EXTERNAL_PATH, DATA_PATH, MODELS_PATH, repo_
 from modeling import train_regression_model
 from preparation import trim_dataframe
 from .git import append_commit_files, create_archive, update_git_files
+
+# A training run that has not finished within this window is a crashed one, not a live
+# lock. Generous on purpose: reaping a lock that is still held is the failure this
+# constant exists to prevent.
+_STALE_LOCK_SECONDS = 6 * 60 * 60
 
 scheduler = AsyncIOScheduler()
 
@@ -46,13 +52,30 @@ async def dump_data() -> None:
 
 @scheduler.scheduled_job(trigger="cron", minute="*/15")
 async def model_training() -> None:
-    for file in [
-        Path(root) / file
-        for root, directories, files in walk(MODELS_PATH)
-        for file in files
-        if file.endswith(".lock")
+    # Reap only STALE locks, never every lock.
+    #
+    # This used to delete every .lock unconditionally on each tick, which destroyed the only
+    # cross-process interlock the design has. The service runs `gunicorn -w 4` and the scheduler
+    # is started from the ASGI lifespan, so there are FOUR schedulers, one per worker: worker B's
+    # tick removed worker A's in-flight lock, and both then trained the same coin against the same
+    # CSVs and the same pickle path, which is written without an atomic rename.
+    #
+    # A lock older than the window below can only be a crashed run, since a live one is refreshed
+    # by the process that holds it finishing and removing it.
+    now = time()
+    for lock_path in [
+        Path(root) / name
+        for root, _directories, files in walk(MODELS_PATH)
+        for name in files
+        if name.endswith(".lock")
     ]:
-        remove(Path(MODELS_PATH) / file)
+        try:
+            if now - path.getmtime(lock_path) > _STALE_LOCK_SECONDS:
+                remove(lock_path)
+        except OSError:
+            # Gone already, or taken by another worker between the walk and here. Either way it is
+            # not ours to reap.
+            pass
 
     coin_list = read_csv(Path(DATA_EXTERNAL_PATH) / "coin_list.csv").to_dict("records")
     for coin in coin_list:

@@ -114,10 +114,11 @@ def recursive_forecast(
     target = dataframe["value"].copy()
 
     for date in forecast_range:
-        # Build target time series using previously forecast value
-        new_point = forecasted_values[-1] if len(forecasted_values) > 0 else 0.0
-        target = concat([target, Series(new_point, [date])])
-
+        # Predict from the features at the LAST OBSERVED row, which is what the model was trained
+        # on: x(t) -> y(t+1). The previous loop appended a placeholder row for `date` FIRST and
+        # then predicted from features computed AT that row, which is one step out of step with the
+        # training pairing. It also seeded that placeholder with 0.0 on the first iteration, a
+        # value the series never takes, so the first forecast was made from a fabricated lag.
         features = generate_features(target, lags)
         features = concat(
             [
@@ -129,10 +130,11 @@ def recursive_forecast(
         features = features[model_features]
         try:
             features = value_scaling(features)
-            predictions = model.predict(features)
-            forecasted_values.append(predictions[-1])
+            prediction = model.predict(features)[-1]
         except ValueError:
-            forecasted_values.append(nan)
-        target.update(Series(forecasted_values[-1], [target.index[-1]]))
+            prediction = nan
+        forecasted_values.append(prediction)
+        # Feed the prediction back in so the next step's lags see it.
+        target = concat([target, Series(prediction, [date])])
 
     return Series(forecasted_values, forecast_range)

@@ -1,7 +1,17 @@
 from datetime import datetime
 from logging import getLogger
 from math import inf
-from os import environ, makedirs, path, remove
+from os import (
+    O_CREAT,
+    O_EXCL,
+    O_WRONLY,
+    close,
+    environ,
+    makedirs,
+    open as os_open,
+    path,
+    remove,
+)
 from pathlib import Path
 from pickle import dump, HIGHEST_PROTOCOL
 
@@ -34,19 +44,27 @@ logger = getLogger(__name__)
 lock_file = ".lock"
 
 
-def previous_value_overwrite(dataframe: DataFrame) -> DataFrame:
-    dataframe = dataframe.shift(periods=-1, axis=0)
-    return dataframe.drop(dataframe.tail(1).index)
-
-
 def split_dataframe(
     dataframe: DataFrame, target: str, selected_features: list = None
 ) -> tuple:
+    """Pair the features at t with the value at t+1.
+
+    This used to shift X FORWARD by one row and leave y where it was, via a helper called
+    `previous_value_overwrite`. That pairs features from t+1 with a target at t, so the model was
+    asked to predict the past from the future - and because `lag_1` at t+1 is by definition the
+    value at t, the target ended up as a column of X. Measured on a random walk: the leaked column
+    correlated with y at r = 1.000000, against 0.996881 for the same column honestly aligned.
+
+    Nothing was visibly wrong. Every error in results/errors/ was near-zero by construction, the
+    best model was chosen on that error, and the served forecast collapsed to persistence.
+    """
     x = dataframe.drop(columns=target, errors="ignore")
     x = value_scaling(x)
     y = dataframe["value"]
 
-    x = previous_value_overwrite(x)
+    # Take the target from the NEXT row, and drop the final row of both: it has no next value.
+    y = y.shift(-1)
+    x = x.drop(x.tail(1).index)
     y = y.drop(y.tail(1).index)
 
     selected_features = (
@@ -88,13 +106,23 @@ def create_paths(coin_symbol: str, model_name: str) -> None:
     create_results_path(RESULTS_PREDICTIONS_PATH, coin_symbol, model_name)
 
 
-def check_coin_lock(coin_symbol: str) -> bool:
-    return path.exists(path.join(MODELS_PATH, coin_symbol, lock_file))
+def acquire_coin_lock(coin_symbol: str) -> bool:
+    """Take the training lock for a coin. True if THIS process now owns it.
 
-
-def create_coin_lock(coin_symbol: str) -> None:
+    O_CREAT|O_EXCL is one syscall, so two processes cannot both succeed. The previous form was a
+    separate `check_coin_lock` several statements before `create_coin_lock`, with a read_csv in
+    between - a window wide enough for four gunicorn workers, each running its own scheduler, to
+    pass the check together and then all train the same coin against the same files.
+    """
     makedirs(path.join(MODELS_PATH, coin_symbol), exist_ok=True)
-    (MODELS_PATH / coin_symbol / lock_file).write_text("")
+    try:
+        descriptor = os_open(
+            path.join(MODELS_PATH, coin_symbol, lock_file), O_CREAT | O_EXCL | O_WRONLY
+        )
+    except FileExistsError:
+        return False
+    close(descriptor)
+    return True
 
 
 def hyper_parameter_tuning(model: BaseRegressionModel, x_train, y_train, coin_symbol):
@@ -203,14 +231,18 @@ async def generate_regression_model(dataframe: DataFrame, coin_symbol: str) -> N
 
 
 async def train_regression_model(coin: dict) -> None:
-    if check_best_regression_model(coin["symbol"]) or check_coin_lock(coin["symbol"]):
+    if check_best_regression_model(coin["symbol"]):
+        return
+    # Acquire BEFORE any other work, and bail if someone else holds it. Ordering matters: the lock
+    # used to be taken after the read_csv below, so the check and the create were separated by a
+    # file read.
+    if not acquire_coin_lock(coin["symbol"]):
         return
     try:
         dataframe = read_csv(
             Path(DATA_EXTERNAL_PATH, coin["symbol"], "data.csv"), index_col="time"
         )
         dataframe.index = to_datetime(dataframe.index / 10**3, unit="s")
-        create_coin_lock(coin["symbol"])
         await generate_regression_model(dataframe, coin["symbol"])
         draw_errors(coin)
         draw_predictions(coin)
