@@ -85,3 +85,15 @@ jobs:
         # picked from the first run is either trivially loose or fails CI on a figure nobody has
         # read. --cov=src scopes it to the application; tests and definitions.py are not subject.
         run: python -m pytest -q --cov=src --cov-report=term
+
+      # The Dockerfile is the one artifact nothing above exercises. Every step here runs against
+      # the checkout under the runner's own interpreter; none of them proves an image can be built
+      # from it. A sibling repo shipped a Dockerfile that could not build at all for months -- its
+      # base image had removed a flag the build depended on -- and no lint, compile-check or test
+      # step could have seen it.
+      #
+      # No push and no registry login: this repo publishes no images. The step exists so a broken
+      # Dockerfile fails on the PR that breaks it rather than the next time someone needs an image.
+      # The context is the repo root, which is what `COPY . .` in the Dockerfile expects.
+      - name: Build the container image
+        run: docker build -f docker/Dockerfile -t crypto-prophet:ci .
