@@ -12,8 +12,23 @@ name: Security scan
 on:
   schedule:
     - cron: "33 7 * * 1" # weekly, Monday 07:33 UTC - fleet slot (minutes staggered per repo)
-  push:
-    branches: [master]
+  # No `push` trigger, deliberately. A push to master is a squash of the tree the `pull_request`
+  # run checked minutes earlier, so it re-answered a question already answered. This repo is
+  # public and Actions minutes are unlimited here, so the reason is redundancy rather than cost --
+  # the same change on the two private repos was made to stop the account's free minutes running
+  # out, and this one keeps the fleet's scans on one shape.
+  #
+  # The two triggers that remain each cover something nothing else does: `pull_request` catches a
+  # dependency arriving with a known advisory BEFORE it lands; `schedule` catches a dependency
+  # already here that became vulnerable, which no code-change trigger can see.
+  #
+  # The gap this accepts, named rather than left to be discovered: a dependency change pushed
+  # DIRECTLY to master, bypassing a PR, is unscanned until the weekly run. Dependencies here arrive
+  # through Dependabot PRs, and Dependabot's own alerts cover that case independently.
+  #
+  # NOT done in trencho.github.io, on purpose: that scan uploads SARIF to the Security tab, so its
+  # push run is what refreshes -- and CLOSES -- default-branch code-scanning alerts. This scan
+  # uploads nothing, so dropping push costs it no signal.
   pull_request:
   workflow_dispatch:
 
