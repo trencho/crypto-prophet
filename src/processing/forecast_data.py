@@ -1,3 +1,4 @@
+from functools import lru_cache
 from json import JSONDecodeError, loads
 from logging import getLogger
 from math import isnan
@@ -26,15 +27,30 @@ from .feature_scaling import apply_scaler
 
 logger = getLogger(__name__)
 
+# A forecast is recomputed from artefacts the scheduler rewrites at most every 15 minutes, and
+# computing one costs ~0.58s per coin (a disk unpickle plus a 30-step recursive prediction that
+# regenerates features at every step). Serving the same numbers twice in that window is pure waste,
+# and with -w 4 a handful of concurrent requests is enough to occupy every worker.
+#
+# Keyed on the model file's mtime as well as the coin, so a retrain invalidates the entry by
+# construction rather than by waiting out a TTL.
+FORECAST_CACHE_SIZE = 32
+
 FORECAST_PERIOD = "1D"
 FORECAST_STEPS = 30
 
 
-def fetch_forecast_result() -> dict:
+def fetch_forecast_result(coin_id: str = None) -> dict:
+    """Forecast every configured coin, or just one when `coin_id` is given.
+
+    The single-coin path exists because the route had no way to ask for one: a caller wanting
+    bitcoin paid for the whole configured set, and each coin unpickles a model and runs a 30-step
+    recursive forecast.
+    """
     forecast_result = {}
     coin_list = read_csv(Path(DATA_EXTERNAL_PATH) / "coin_list.csv").to_dict("records")
     for coin in coin_list:
-        if coin["id"] in coins:
+        if coin["id"] in coins and (coin_id is None or coin["id"] == coin_id):
             if (predictions := forecast_coin(coin["symbol"])) is None:
                 continue
 
@@ -55,7 +71,32 @@ class ModelArtifactMismatch(ValueError):
     """A coin's model, feature list and scaler do not describe the same training run."""
 
 
+def _model_fingerprint(coin_symbol: str) -> Optional[float]:
+    try:
+        return (
+            (Path(MODELS_PATH) / coin_symbol / "best_regression_model.pkl")
+            .stat()
+            .st_mtime
+        )
+    except OSError:
+        return None
+
+
 def forecast_coin(coin_symbol: str) -> Optional[Series]:
+    fingerprint = _model_fingerprint(coin_symbol)
+    if fingerprint is None:
+        return None
+    return _forecast_coin_cached(coin_symbol, fingerprint)
+
+
+@lru_cache(maxsize=FORECAST_CACHE_SIZE)
+def _forecast_coin_cached(coin_symbol: str, _fingerprint: float) -> Optional[Series]:
+    """`_fingerprint` is unused in the body and load-bearing in the key.
+
+    It is the model file's mtime, so a retrain produces a different key and the previous entry
+    stops being reachable. Without it this cache would serve the old model's numbers until the
+    process restarted.
+    """
     if (load_model := load_regression_model(coin_symbol)) is None:
         return None
 
