@@ -4,7 +4,7 @@ from .feature_generation import (
     generate_lag_features,
     generate_time_features,
 )
-from .feature_scaling import value_scaling
+from .feature_scaling import apply_scaler, fit_scaler
 from .feature_selection import backward_elimination
 from .forecast_data import fetch_forecast_result
 from .normalize_data import current_hour

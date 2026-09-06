@@ -32,6 +32,12 @@ app_prod = "production"
 
 chunk_size = 15000
 
+# Version of the on-disk model artefact set (model + selected_features + scaler + manifest).
+# Bumping this retires every previously trained artefact: the loader refuses a directory whose
+# manifest carries a different schema, so the scheduler retrains it rather than serving numbers
+# produced by an older pipeline.
+PIPELINE_SCHEMA = 1
+
 coins = ["bitcoin", "ethereum", "ravencoin"]
 
 regression_models = {

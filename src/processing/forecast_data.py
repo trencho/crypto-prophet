@@ -1,6 +1,7 @@
+from json import JSONDecodeError, loads
+from logging import getLogger
 from math import isnan
 from math import nan
-from os import path
 from pathlib import Path
 from pickle import load
 from typing import Optional
@@ -15,13 +16,15 @@ from pandas import (
     to_datetime,
 )
 
-from definitions import coins, DATA_EXTERNAL_PATH, MODELS_PATH
+from definitions import coins, DATA_EXTERNAL_PATH, MODELS_PATH, PIPELINE_SCHEMA
 from models.base_regression_model import BaseRegressionModel
 from .feature_generation import (
     encode_categorical_data,
     generate_features,
 )
-from .feature_scaling import value_scaling
+from .feature_scaling import apply_scaler
+
+logger = getLogger(__name__)
 
 FORECAST_PERIOD = "1D"
 FORECAST_STEPS = 30
@@ -48,38 +51,104 @@ def fetch_forecast_result() -> dict:
     return forecast_result
 
 
+class ModelArtifactMismatch(ValueError):
+    """A coin's model, feature list and scaler do not describe the same training run."""
+
+
 def forecast_coin(coin_symbol: str) -> Optional[Series]:
     if (load_model := load_regression_model(coin_symbol)) is None:
         return None
 
-    model, model_features = load_model
+    model, model_features, scaler = load_model
 
-    return recursive_forecast(coin_symbol, model, model_features)
+    return recursive_forecast(coin_symbol, model, model_features, scaler)
 
 
 def load_regression_model(coin_symbol: str):
-    if not path.exists(
-        path.join(MODELS_PATH, coin_symbol, "best_regression_model.pkl")
-    ):
+    """Load a coin's model, features and scaler, or return None if they do not agree.
+
+    Returning None means "this coin has nothing servable", which the caller already handles by
+    skipping the coin. It used to check only that the model file existed and then open the
+    features file unguarded, so a half-written directory raised FileNotFoundError out of the HTTP
+    handler and 500'd the whole endpoint - every coin, because of one.
+
+    The schema check is also what retires every artefact trained before the scaler was persisted:
+    those directories have no pipeline.json, so they are refused here and the scheduler retrains
+    them. That matters more than it looks, because it means correctness does not depend on someone
+    remembering to delete models/.
+    """
+    coin_path = Path(MODELS_PATH) / coin_symbol
+    manifest_path = coin_path / "pipeline.json"
+    if not manifest_path.exists():
         return None
 
-    with open(
-        path.join(MODELS_PATH, coin_symbol, "best_regression_model.pkl"), "rb"
-    ) as in_file:
+    try:
+        manifest = loads(manifest_path.read_text(encoding="utf-8"))
+    except JSONDecodeError:
+        logger.warning("%s: pipeline.json is not readable JSON; skipping", coin_symbol)
+        return None
+
+    if manifest.get("schema") != PIPELINE_SCHEMA:
+        logger.info(
+            "%s: pipeline schema %s, expected %s; skipping until it is retrained",
+            coin_symbol,
+            manifest.get("schema"),
+            PIPELINE_SCHEMA,
+        )
+        return None
+
+    required = (
+        coin_path / "best_regression_model.pkl",
+        coin_path / "selected_features.pkl",
+        coin_path / "scaler.pkl",
+    )
+    if not all(artefact.exists() for artefact in required):
+        logger.warning("%s: model directory is incomplete; skipping", coin_symbol)
+        return None
+
+    with open(coin_path / "best_regression_model.pkl", "rb") as in_file:
         model = load(in_file)
-
-    with open(
-        path.join(MODELS_PATH, coin_symbol, "selected_features.pkl"), "rb"
-    ) as in_file:
+    with open(coin_path / "selected_features.pkl", "rb") as in_file:
         model_features = load(in_file)
+    with open(coin_path / "scaler.pkl", "rb") as in_file:
+        scaler = load(in_file)
 
-    return model, model_features
+    try:
+        verify_pipeline(coin_symbol, manifest, model, model_features, scaler)
+    except ModelArtifactMismatch as mismatch:
+        logger.error("%s: %s", coin_symbol, mismatch)
+        return None
+
+    return model, model_features, scaler
+
+
+def verify_pipeline(coin_symbol, manifest, model, model_features, scaler) -> None:
+    """Refuse a set whose parts disagree, rather than serving numbers from mismatched columns."""
+    if list(manifest.get("features", [])) != list(model_features):
+        raise ModelArtifactMismatch(
+            "the manifest's feature list and selected_features.pkl differ"
+        )
+
+    scaler_features = getattr(scaler, "feature_names_in_", None)
+    if scaler_features is not None and len(scaler_features) != len(model_features):
+        raise ModelArtifactMismatch(
+            f"the scaler was fitted on {len(scaler_features)} features, "
+            f"the model expects {len(model_features)}"
+        )
+
+    model_inputs = getattr(model, "n_features_in_", None)
+    if model_inputs is not None and model_inputs != len(model_features):
+        raise ModelArtifactMismatch(
+            f"the model takes {model_inputs} features, "
+            f"the feature list has {len(model_features)}"
+        )
 
 
 def recursive_forecast(
     coin_symbol: str,
     model: BaseRegressionModel,
     model_features: list,
+    scaler,
     lags: int = FORECAST_STEPS,
     n_steps: int = FORECAST_STEPS,
     # A pandas frequency string (FORECAST_PERIOD is "1D"), not a count of periods.
@@ -129,7 +198,10 @@ def recursive_forecast(
         encode_categorical_data(features)
         features = features[model_features]
         try:
-            features = value_scaling(features)
+            # Transform with the TRAINING scaler. This used to refit a fresh scaler on every
+            # step's frame, so each of the 30 steps was scaled by different statistics and
+            # none of them matched the ones the model was trained under.
+            features = apply_scaler(features, scaler)
             prediction = model.predict(features)[-1]
         except ValueError:
             prediction = nan
