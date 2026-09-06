@@ -46,17 +46,30 @@ def _write_series(tmp_path, rows=40):
     return external
 
 
+class _IdentityScaler:
+    """Stands in for a fitted scaler in the loop-shape tests.
+
+    It deliberately has no `fit`: if the forecast loop ever starts fitting again, these tests fail
+    with an AttributeError rather than passing over a silently refitted scaler.
+    """
+
+    def transform(self, frame):
+        return frame
+
+
 def _run(monkeypatch, tmp_path, model, n_steps=5):
     external = _write_series(tmp_path)
     monkeypatch.setattr(fd, "DATA_EXTERNAL_PATH", str(external))
-    monkeypatch.setattr(fd, "value_scaling", lambda f: f)
+    monkeypatch.setattr(fd, "apply_scaler", lambda f, scaler: f)
     monkeypatch.setattr(fd, "encode_categorical_data", lambda f: None)
     monkeypatch.setattr(
         fd,
         "generate_features",
         lambda target, lags: DataFrame({"lag_1": target.values}, index=target.index),
     )
-    return fd.recursive_forecast("btc", model, ["lag_1"], lags=3, n_steps=n_steps)
+    return fd.recursive_forecast(
+        "btc", model, ["lag_1"], _IdentityScaler(), lags=3, n_steps=n_steps
+    )
 
 
 def test_the_forecast_has_one_value_per_requested_step(monkeypatch, tmp_path):

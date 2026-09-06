@@ -27,7 +27,7 @@ def test_split_dataframe_alignment():
     )
 
     # Supplying selected_features avoids the OLS backward-elimination path.
-    x, y = split_dataframe(frame, "value", selected_features=["feat_a"])
+    x, y, scaler = split_dataframe(frame, "value", selected_features=["feat_a"])
 
     assert len(x) == len(y)
     # The split drops exactly one row: the last, which has no next value to predict.
@@ -38,7 +38,7 @@ def test_split_dataframe_alignment():
     # make: it checked only lengths and column names, all of which a tail-drop satisfies on its
     # own, so it passed while x was shifted to t+1 and y left at t.
     assert list(y) == [2.0, 3.0, 4.0, 5.0, 6.0]
-    # feat_a is unscaled here only because value_scaling is a no-op on a single column with this
+    # feat_a is unscaled here only because the scaler is a no-op on a single column with this
     # fixture; what matters is the ROW it came from, which must be t, not t+1.
     assert x.index.tolist() == [0, 1, 2, 3, 4]
 
@@ -64,7 +64,7 @@ def test_no_feature_column_equals_the_target():
     values = 100 + cumsum(rng.normal(0, 1, 200))
     frame = DataFrame({"value": values, "lag_1": Series(values).shift(1).bfill()})
 
-    x, y = split_dataframe(frame, "value", selected_features=["lag_1"])
+    x, y, _ = split_dataframe(frame, "value", selected_features=["lag_1"])
 
     for column in x.columns:
         r = corrcoef(x[column].to_numpy(), y.to_numpy())[0, 1]
@@ -74,10 +74,23 @@ def test_no_feature_column_equals_the_target():
         )
 
 
-def test_check_best_regression_model_freshness(monkeypatch):
-    coin_symbol = "btc"
+def test_check_best_regression_model_freshness(monkeypatch, tmp_path):
+    """Skipping training needs a model that is both recent AND usable.
 
-    # Fresh: modified just now -> within the one-month window -> True.
+    The manifest half matters as much as the mtime: a model saved before the scaler was persisted
+    carries no pipeline.json and the forecast loader refuses it. Calling that "fresh" here would
+    strand the coin - refused at serving time, skipped at training time - until the mtime window
+    expired a month later.
+    """
+    coin_symbol = "btc"
+    monkeypatch.setattr(train_model, "MODELS_PATH", tmp_path)
+    coin_path = tmp_path / coin_symbol
+    coin_path.mkdir()
+    manifest = coin_path / "pipeline.json"
+    current = '{"schema": %d, "features": []}' % train_model.PIPELINE_SCHEMA
+    manifest.write_text(current, encoding="utf-8")
+
+    # Fresh, with a current manifest -> within the one-month window -> True.
     monkeypatch.setattr(train_model.path, "getmtime", lambda _p: time.time())
     assert train_model.check_best_regression_model(coin_symbol) is True
 
@@ -89,7 +102,18 @@ def test_check_best_regression_model_freshness(monkeypatch):
     )
     assert train_model.check_best_regression_model(coin_symbol) is False
 
-    # Missing file: getmtime raises OSError -> False.
+    # Recent, but the manifest is from a superseded pipeline -> retrain anyway.
+    monkeypatch.setattr(train_model.path, "getmtime", lambda _p: time.time())
+    manifest.write_text('{"schema": 0, "features": []}', encoding="utf-8")
+    assert train_model.check_best_regression_model(coin_symbol) is False
+
+    # Recent, but no manifest at all -> every artefact predating this change -> retrain.
+    manifest.unlink()
+    assert train_model.check_best_regression_model(coin_symbol) is False
+
+    # Missing model file: getmtime raises OSError -> False.
+    manifest.write_text(current, encoding="utf-8")
+
     def _raise(_p):
         raise OSError("no such file")
 

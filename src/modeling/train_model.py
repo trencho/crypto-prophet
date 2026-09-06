@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from logging import getLogger
 from math import inf
 from os import (
@@ -13,12 +13,14 @@ from os import (
     remove,
 )
 from pathlib import Path
+from json import dumps, JSONDecodeError, loads
 from pickle import dump, HIGHEST_PROTOCOL
 
 from pandas import DataFrame, read_csv, to_datetime
 from sklearn.model_selection import RandomizedSearchCV
 
 from definitions import (
+    PIPELINE_SCHEMA,
     app_dev,
     app_env,
     DATA_EXTERNAL_PATH,
@@ -32,7 +34,8 @@ from models.base_regression_model import BaseRegressionModel
 from processing import (
     backward_elimination,
     generate_features,
-    value_scaling,
+    apply_scaler,
+    fit_scaler,
     encode_categorical_data,
 )
 from processing.normalize_data import current_hour
@@ -45,7 +48,10 @@ lock_file = ".lock"
 
 
 def split_dataframe(
-    dataframe: DataFrame, target: str, selected_features: list = None
+    dataframe: DataFrame,
+    target: str,
+    selected_features: list = None,
+    scaler=None,
 ) -> tuple:
     """Pair the features at t with the value at t+1.
 
@@ -59,7 +65,14 @@ def split_dataframe(
     best model was chosen on that error, and the served forecast collapsed to persistence.
     """
     x = dataframe.drop(columns=target, errors="ignore")
-    x = value_scaling(x)
+    # Fit only when no scaler is handed in. The caller fits ONCE, on the training split, and
+    # passes that scaler back for the test split and for inference. Scaling each split with its
+    # own statistics is the same class of mistake as scaling before splitting: the numbers the
+    # model sees at serving time are not the numbers it was trained under.
+    if scaler is None:
+        x, scaler = fit_scaler(x)
+    else:
+        x = apply_scaler(x, scaler)
     y = dataframe["value"]
 
     # Take the target from the NEXT row, and drop the final row of both: it has no next value.
@@ -72,15 +85,47 @@ def split_dataframe(
     )
     x = x[selected_features]
 
-    return x, y
+    return x, y, scaler
 
 
-def save_selected_features(coin_symbol: str, selected_features: list) -> None:
-    makedirs(Path(MODELS_PATH) / coin_symbol, exist_ok=True)
-    with open(
-        Path(MODELS_PATH) / coin_symbol / "selected_features.pkl", "wb"
-    ) as out_file:
+def save_pipeline(coin_symbol: str, selected_features: list, scaler) -> None:
+    """Write the feature list, the fitted scaler, and a manifest tying them to the model.
+
+    The three artefacts under a coin's model directory only mean anything together, and nothing
+    used to check they agreed. A model saved with one feature list and a features file from a
+    different run loaded happily and served numbers computed from mismatched columns; a
+    half-written directory raised FileNotFoundError out of the request handler and 500'd the whole
+    endpoint rather than dropping one coin.
+
+    The manifest also makes every artefact produced before this change self-invalidating: it has
+    no pipeline.json, so the loader refuses it and the scheduler retrains, without anyone having
+    to remember to purge models/.
+    """
+    coin_path = Path(MODELS_PATH) / coin_symbol
+    makedirs(coin_path, exist_ok=True)
+
+    with open(coin_path / "selected_features.pkl", "wb") as out_file:
         dump(selected_features, out_file, HIGHEST_PROTOCOL)
+    with open(coin_path / "scaler.pkl", "wb") as out_file:
+        dump(scaler, out_file, HIGHEST_PROTOCOL)
+
+    (coin_path / "pipeline.json").write_text(
+        dumps(
+            {
+                "schema": PIPELINE_SCHEMA,
+                "created": datetime.now(UTC).isoformat(),
+                "target": "value",
+                "features": list(selected_features),
+                "scaler": {
+                    "file": "scaler.pkl",
+                    "n_features_in": int(getattr(scaler, "n_features_in_", 0)),
+                },
+                "model": {"file": "best_regression_model.pkl"},
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 async def read_model(coin_symbol: str, algorithm: str, error_type: str) -> tuple:
@@ -152,6 +197,26 @@ def remove_coin_lock(coin_symbol: str) -> None:
 
 
 def check_best_regression_model(coin_symbol: str) -> bool:
+    """True when this coin has a usable, current model and training can be skipped.
+
+    "Usable" is not just "recent". A model saved before the scaler was persisted has no
+    pipeline.json, and the forecast loader refuses it - so treating it as fresh here would strand
+    the coin: refused at serving time, skipped at training time, invisible for a month until the
+    mtime window expired. A missing or superseded manifest means retrain, whatever the mtime says.
+    """
+    coin_path = Path(MODELS_PATH) / coin_symbol
+    manifest_path = coin_path / "pipeline.json"
+    if not manifest_path.exists():
+        return False
+
+    try:
+        if loads(manifest_path.read_text(encoding="utf-8")).get("schema") != (
+            PIPELINE_SCHEMA
+        ):
+            return False
+    except (JSONDecodeError, OSError):
+        return False
+
     try:
         last_modified = int(
             path.getmtime(
@@ -182,11 +247,14 @@ async def generate_regression_model(dataframe: DataFrame, coin_symbol: str) -> N
     validation_split = len(dataframe.index) * 3 // 4
 
     train_dataframe = dataframe.iloc[:validation_split]
-    x_train, y_train = split_dataframe(train_dataframe, "value")
+    # Fit the scaler here, on the TRAINING split only, and reuse it everywhere after.
+    x_train, y_train, scaler = split_dataframe(train_dataframe, "value")
     selected_features = x_train.columns.values.tolist()
 
     test_dataframe = dataframe.iloc[validation_split:]
-    x_test, y_test = split_dataframe(test_dataframe, "value", selected_features)
+    x_test, y_test, _ = split_dataframe(
+        test_dataframe, "value", selected_features, scaler=scaler
+    )
 
     best_model_error = inf
     best_model = None
@@ -224,8 +292,10 @@ async def generate_regression_model(dataframe: DataFrame, coin_symbol: str) -> N
             best_model_error = model_error
 
     if best_model is not None:
-        save_selected_features(coin_symbol, selected_features)
-        x_train, y_train = split_dataframe(dataframe, "value", selected_features)
+        save_pipeline(coin_symbol, selected_features, scaler)
+        x_train, y_train, _ = split_dataframe(
+            dataframe, "value", selected_features, scaler=scaler
+        )
         best_model.train(x_train, y_train)
         save_best_regression_model(coin_symbol, best_model.reg)
 

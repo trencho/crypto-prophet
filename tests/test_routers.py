@@ -167,3 +167,30 @@ def test_a_failing_warm_up_is_logged_and_does_not_break_startup(monkeypatch, cap
 
     assert "warm-up failed" in caplog.text
     assert "coingecko is down" in caplog.text
+
+
+def test_forecast_for_a_single_coin_only_computes_that_coin(
+    forecast_client, monkeypatch
+):
+    """The per-coin route must not compute the whole configured set."""
+    seen = []
+
+    def _fetch(coin_id=None):
+        seen.append(coin_id)
+        return {1: {"time": 1, "bitcoin": 42.0}}
+
+    monkeypatch.setattr("api.routers.forecast.fetch_forecast_result", _fetch)
+
+    response = forecast_client.get("/forecast/bitcoin/")
+
+    assert response.status_code == 200
+    assert response.json() == [{"time": 1, "bitcoin": 42.0}]
+    assert seen == ["bitcoin"]
+
+
+def test_an_unconfigured_coin_is_404_not_an_empty_list(forecast_client):
+    """ "Not served here" and "no model yet" must not both render as []."""
+    response = forecast_client.get("/forecast/dogecoin/")
+
+    assert response.status_code == 404
+    assert "dogecoin" in response.json()["detail"]
