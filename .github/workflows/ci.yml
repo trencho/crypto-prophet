@@ -95,5 +95,19 @@ jobs:
       # No push and no registry login: this repo publishes no images. The step exists so a broken
       # Dockerfile fails on the PR that breaks it rather than the next time someone needs an image.
       # The context is the repo root, which is what `COPY . .` in the Dockerfile expects.
+      # buildx, for the layer cache. The Dockerfile already mounts a pip cache
+      # (`RUN --mount=type=cache,target=/root/.cache/pip`), but a cache MOUNT lives in the builder's
+      # local state and every CI run gets a fresh builder -- so it was empty every time. Measured on
+      # the 2026-09-06 run: setup-python restored a 587 MB pip cache and this step then re-downloaded
+      # every wheel anyway, taking 53s. type=gha persists the LAYERS across runs, which is the part a
+      # mount cannot do. It does not make an invalidated pip layer cheap; it makes an unchanged one free.
+      - uses: docker/setup-buildx-action@v4
       - name: Build the container image
-        run: docker build -f docker/Dockerfile -t crypto-prophet:ci .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          tags: crypto-prophet:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
