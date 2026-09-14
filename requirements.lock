@@ -1,9 +1,12 @@
-# Fully-resolved dependency lock â€” generated from requirements.txt (pip-compile).
+# Fully-resolved dependency lock - generated from requirements.txt AND requirements-dev.txt.
 # Purpose: give OSV-Scanner a fully-pinned tree so it reads REAL resolved transitive
 #          versions (a direct-only requirements.txt makes OSV guess oldest-compatible -> false positives).
 #
-# Regenerate when requirements.txt changes:
-#   uv pip compile requirements.txt --python-version 3.14 --strip-extras --no-header -o requirements.lock
+# Compiled from BOTH manifests on purpose: the Docker image installs requirements.txt alone, so the
+# dev tooling never ships, but the scan still sees it. One lock, two manifests, one scan surface.
+#
+# Regenerate when either manifest changes:
+#   uv pip compile requirements.txt requirements-dev.txt --python-version 3.14 --strip-extras --no-header -o requirements.lock
 # (The flags are load-bearing: they are what ci.yml's lock-agreement guard prints, and omitting
 #  them yields a different file -- uv's own header, and unstripped extras.)
 #
@@ -18,7 +21,7 @@ anyio==4.15.1
 apscheduler==3.11.3
     # via -r requirements.txt
 black==26.5.1
-    # via -r requirements.txt
+    # via -r requirements-dev.txt
 certifi==2026.7.22
     # via
     #   httpcore
@@ -61,7 +64,7 @@ h11==0.16.0
 httpcore==1.0.9
     # via httpx
 httpx==0.28.1
-    # via -r requirements.txt
+    # via -r requirements-dev.txt
 idna==3.19
     # via
     #   anyio
@@ -149,10 +152,10 @@ pyparsing==3.3.2
     # via matplotlib
 pytest==9.1.1
     # via
-    #   -r requirements.txt
+    #   -r requirements-dev.txt
     #   pytest-cov
 pytest-cov==7.1.0
-    # via -r requirements.txt
+    # via -r requirements-dev.txt
 python-dateutil==2.9.0.post0
     # via
     #   matplotlib
@@ -165,7 +168,7 @@ requests==2.34.2
     #   pycoingecko
     #   pygithub
 ruff==0.16.6
-    # via -r requirements.txt
+    # via -r requirements-dev.txt
 scikit-learn==1.9.0
     # via -r requirements.txt
 scipy==1.18.1

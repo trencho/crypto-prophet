@@ -1,0 +1,10 @@
+# Development-only dependencies: formatter, linter, test runner and the HTTP client
+# FastAPI's TestClient needs. None of these is imported from src/, and the Docker image
+# installs requirements.txt alone, so nothing here reaches the production image.
+#
+# requirements.lock is compiled from BOTH files, so the OSV scan still sees this tree.
+black==26.5.1
+httpx==0.28.1
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.6
