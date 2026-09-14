@@ -48,10 +48,16 @@ def fetch_forecast_result(coin_id: str = None) -> dict:
     recursive forecast.
     """
     forecast_result = {}
+    skipped = []
     coin_list = read_csv(Path(DATA_EXTERNAL_PATH) / "coin_list.csv").to_dict("records")
     for coin in coin_list:
         if coin["id"] in coins and (coin_id is None or coin["id"] == coin_id):
             if (predictions := forecast_coin(coin["symbol"])) is None:
+                # A coin with no usable model drops out of the response with the same shape as a
+                # coin nobody asked for. load_regression_model logs the cases it can see, but the
+                # commonest one - never trained, so no pipeline.json at all - returns None without
+                # a word, and the only symptom is a short response.
+                skipped.append(coin["id"])
                 continue
 
             for index, value in predictions.items():
@@ -63,6 +69,14 @@ def fetch_forecast_result(coin_id: str = None) -> dict:
                     }
                 )
                 forecast_result.update({int(index.timestamp()): timestamp_dict})
+
+    if skipped:
+        # One line per call rather than one per coin: the list is what an operator needs, and
+        # forecast_coin returns None before the cache, so a per-coin line would repeat on every
+        # request for as long as the coin stays untrained.
+        logger.warning(
+            "no usable model for %s; omitted from the forecast", ", ".join(skipped)
+        )
 
     return forecast_result
 
