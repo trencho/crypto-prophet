@@ -187,3 +187,8 @@ results/
 # It was tracked and empty; a tracked .env is a pattern that invites a secret later.
 .env
 .env.*
+
+# Compiled dependency tree. security-scan.yml compiles this in the job and uploads it as a run
+# artifact. A committed copy is a derived file only a human can refresh, which is what failed every
+# Dependabot pip PR and, in between, let the scan read transitives pip would not install.
+requirements.lock

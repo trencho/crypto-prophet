@@ -5,8 +5,8 @@
 # workflow's GITHUB_TOKEN merges once the named check is green. (Public repo, so native
 # `gh pr merge --auto` is also available; the self-gated variant avoids enabling branch protection.)
 #
-# NOTE: Dependabot bumps requirements.txt but not requirements.lock; regenerate the lock after a bump
-# lands so the OSV security scan reads the current tree.
+# NOTE: Dependabot bumps requirements.txt and nothing else has to follow. The OSV security scan
+# compiles the tree it reads, so a pip PR needs no hand-regenerated lock to go green.
 name: Dependabot auto-merge
 
 on: pull_request
