@@ -89,7 +89,7 @@ jobs:
           echo "tree: $(grep -c '^[A-Za-z]' requirements.lock) packages"
 
       - name: OSV-Scanner
-        uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
+        uses: google/osv-scanner-action/osv-scanner-action@a345acffa64b0eaede81a3d9aae6141214d9c8fc # v2.6.0
         with:
           # `.lock` isn't an OSV-recognized name, so force the pip parser with `<parse-as>:<path>`.
           # --no-resolve: the tree is already fully pinned, so read exactly those versions and skip
