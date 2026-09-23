@@ -6,18 +6,18 @@ serves a 30-day price forecast over a small REST API.
 
 ## How it works
 
-- **Ingest** — `pycoingecko` pulls the coin list and hourly price history for the configured coins
-  (`bitcoin`, `ethereum`, `ravencoin` — see `definitions.py`) into `data/`. Runs on startup and on a
+- **Ingest**: `pycoingecko` pulls the coin list and hourly price history for the configured coins
+  (`bitcoin`, `ethereum`, `ravencoin`, see `definitions.py`) into `data/`. Runs on startup and on a
   daily cron.
-- **Train** (cron-driven, not on request) — for each coin: feature generation → train/test split →
+- **Train** (cron-driven, not on request): for each coin: feature generation → train/test split →
   scaling + backward-elimination feature selection → `RandomizedSearchCV` over each model → the
   lowest-MAE model is retrained on the full data and pickled under `models/`. A model younger than one
   month is reused rather than retrained.
-- **Models** — Decision Tree, LightGBM, Linear, MLP, Support Vector, XGBoost (Random Forest is present
+- **Models**: Decision Tree, LightGBM, Linear, MLP, Support Vector, XGBoost (Random Forest is present
   in the registry but disabled).
-- **Forecast** — `GET /api/v1/forecast/` runs a 30-step recursive prediction (each day's prediction
+- **Forecast**: `GET /api/v1/forecast/` runs a 30-step recursive prediction (each day's prediction
   feeds the next) and returns the merged series. Returns empty until a training run has produced models.
-- **Scheduling** — APScheduler runs the training, daily coin refresh, and an optional periodic dump of
+- **Scheduling**: APScheduler runs the training, daily coin refresh, and an optional periodic dump of
   `data/` to a GitHub repo (for off-box persistence).
 
 ## API
@@ -80,6 +80,6 @@ Serves via gunicorn + uvicorn workers behind traefik.
   versions pip would install today. No `.lock` file is committed; to see exactly what a run
   scanned, download its `dependency-tree-*` artifact.
 - **Dependencies:** Dependabot opens weekly update PRs; **every update type auto-merges once CI is
-  green, majors included** -- majors simply arrive in their own PR rather than grouped, so a
+  green, majors included**: majors simply arrive in their own PR rather than grouped, so a
   breaking change is reviewable in isolation. With no reviewer in the loop, CI is the entire gate.
 
