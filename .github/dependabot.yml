@@ -1,7 +1,7 @@
 # Dependabot version updates. Grouping minor+patch keeps majors in their own PR, so a breaking
 # change lands on its own and is reviewable in isolation -- but every update type auto-merges
-# once CI is green, majors included. CI is therefore the entire gate; see
-# dependabot-auto-merge.yml, whose own header says the same.
+# once CI is green, majors included. CI is therefore the entire gate; see the `auto-merge` job in
+# ci.yml, whose own comment says the same.
 # Dependabot updates requirements.txt (the install source of truth). Nothing else needs updating
 # with it: security-scan.yml compiles the fully-pinned tree it scans, so there is no committed
 # lock to regenerate and a pip PR can go green on its own.
@@ -49,7 +49,7 @@ updates:
     # Patches within the pinned line still flow. What is held is the MINOR, because on this
     # ecosystem a Python minor is a runtime change that CI would not exercise.
     #
-    # The pre-release guard in dependabot-auto-merge.yml already blocks `python:3.15.0rc1-slim`:
+    # The pre-release guard in ci.yml's `auto-merge` job already blocks `python:3.15.0rc1-slim`:
     # `docker` matches TAGS, which carry no release-channel metadata, so an RC scores as an ordinary
     # minor, and `ignore.versions` takes version RANGES rather than globs (dependabot-core#15154),
     # so "no pre-releases" cannot be written here at all.
