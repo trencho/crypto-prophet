@@ -1,5 +1,5 @@
 APScheduler==3.11.3
-fastapi==0.141.1
+fastapi==0.142.1
 gunicorn==26.2.0
 lightgbm==4.7.0
 matplotlib==3.11.2
@@ -13,5 +13,5 @@ scikit-learn==1.9.1
 seaborn==0.13.2
 statsmodels==0.15.0
 urllib3==2.8.0
-uvicorn==0.53.0
+uvicorn==0.54.0
 xgboost==3.4.1
