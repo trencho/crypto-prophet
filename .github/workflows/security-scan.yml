@@ -29,7 +29,15 @@ on:
   # NOT done in trencho.github.io, on purpose: that scan uploads SARIF to the Security tab, so its
   # push run is what refreshes -- and CLOSES -- default-branch code-scanning alerts. This scan
   # uploads nothing, so dropping push costs it no signal.
+  #
+  # The `pull_request` run is filtered to what the scan reads: the two manifests it compiles the
+  # tree from, and this file, so a change to the scan runs on its own PR. A PR touching none of them
+  # would re-scan the tree master already has, which the weekly schedule covers.
   pull_request:
+    paths:
+      - requirements.txt
+      - requirements-dev.txt
+      - .github/workflows/security-scan.yml
   workflow_dispatch:
 
 permissions:
