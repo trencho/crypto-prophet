@@ -3,7 +3,7 @@
 # installs requirements.txt alone, so nothing here reaches the production image.
 #
 # requirements.lock is compiled from BOTH files, so the OSV scan still sees this tree.
-black==26.5.1
+black==26.10.0
 httpx==0.28.1
 pytest==9.1.1
 pytest-cov==7.1.0
