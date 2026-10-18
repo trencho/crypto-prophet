@@ -11,8 +11,14 @@ on:
   # GITHUB_TOKEN raises no push event. Without this trigger that dispatch is an error, not a run.
   workflow_dispatch:
 
+# actions: read and pull-requests: read let build's `tested` step find the merged pull request and
+# its CI run; without them those calls 403 and the step runs every check. Granted here rather than on
+# the job because `build` has no job-level block and `auto-merge` has its own, which replaces this
+# one, so these reach `build` only.
 permissions:
   contents: read
+  actions: read
+  pull-requests: read
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -26,6 +32,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      # A merged pull request's own CI run already formatted, linted, compiled and tested the tree
+      # this master run would check. This step skips those four steps when, and only when, this
+      # commit is a PR's merge commit, the PR head has the identical tree, and the `build` job of a
+      # ci.yml pull_request run on that head succeeded. It reads the job, not the run, because
+      # auto-merge dispatches this run from inside the PR run, before that run has concluded.
+      # Everything else runs them: a direct push, a PR merged while behind master (its tree
+      # differs), a failed, missing or cancelled PR job, and any API error. The step runs only on a
+      # push or on auto-merge's dispatch (GITHUB_TOKEN, so the actor is github-actions[bot]). A
+      # manual dispatch always runs the checks and is the way to get an extra shuffle seed. The
+      # owner accepted the cost on 2026-10-18: master no longer tries a second seed per merge.
+      # Install and the image build always run: they fill the pip and gha layer caches that PR runs
+      # restore from master's scope.
+      - name: Check whether ci.yml already tested this tree
+        id: tested
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.triggering_actor == 'github-actions[bot]')
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          # The jobs API's name for this job: its id, since it sets no `name:`.
+          JOB_NAME: build
+        run: |
+          tested=false
+          reason="no merged pull request has this commit as its merge commit"
+          pr=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+            --jq "[.[] | select(.merge_commit_sha == \"$SHA\")][0] // empty | \"\(.number) \(.head.sha)\"") ||
+            { pr=""; reason="the pull request lookup failed"; }
+          if [ -n "$pr" ]; then
+            num=${pr%% *}
+            head=${pr##* }
+            merged_tree=$(gh api "repos/$REPO/git/commits/$SHA" --jq .tree.sha) || merged_tree=""
+            head_tree=$(gh api "repos/$REPO/git/commits/$head" --jq .tree.sha) || head_tree=""
+            if [ -z "$merged_tree" ] || [ "$merged_tree" != "$head_tree" ]; then
+              reason="#$num's head tree differs from the merged tree"
+            else
+              if ! ids=$(gh api "repos/$REPO/actions/runs?head_sha=$head&event=pull_request&per_page=100" \
+                --jq '.workflow_runs[] | select(.path == ".github/workflows/ci.yml") | .id'); then
+                reason="the ci.yml run lookup for #$num's head ${head:0:7} failed"
+              else
+                reason="no successful '$JOB_NAME' job on #$num's head ${head:0:7}"
+                for id in $ids; do
+                  if ! count=$(gh api "repos/$REPO/actions/runs/$id/jobs?filter=latest&per_page=100" \
+                    --jq "[.jobs[] | select(.name == \"$JOB_NAME\" and .conclusion == \"success\")] | length"); then
+                    reason="the job lookup for run $id on #$num's head ${head:0:7} failed"
+                    continue
+                  fi
+                  if [ "$count" -gt 0 ] 2>/dev/null; then
+                    tested=true
+                    reason="#$num's head ${head:0:7} has the same tree and its '$JOB_NAME' job passed in run $id"
+                    break
+                  fi
+                done
+              fi
+            fi
+          fi
+          echo "tested=$tested" >> "$GITHUB_OUTPUT"
+          if [ "$tested" = true ]; then verdict="Checks skipped"; else verdict="Checks run"; fi
+          echo "$verdict: $reason"
+          echo "$verdict: $reason" >> "$GITHUB_STEP_SUMMARY"
 
       # Match the runtime the Docker image pins (python:3.14.x-slim).
       - uses: actions/setup-python@v7
@@ -42,15 +108,19 @@ jobs:
           pip install -r requirements.txt -r requirements-dev.txt
 
       - name: Check formatting (Black)
+        if: steps.tested.outputs.tested != 'true'
         run: black --check src tests definitions.py main.py
 
       - name: Lint imports (Ruff)
+        if: steps.tested.outputs.tested != 'true'
         run: ruff check src tests definitions.py main.py
 
       - name: Compile-check (syntax of all modules)
+        if: steps.tested.outputs.tested != 'true'
         run: python -m compileall -q src definitions.py
 
       - name: Test (pytest)
+        if: steps.tested.outputs.tested != 'true'
         # Coverage is REPORTED, not gated. No --cov-fail-under yet: this repo has never had a
         # coverage number, so there is no measured baseline to ratchet against, and a threshold
         # picked from the first run is either trivially loose or fails CI on a figure nobody has
