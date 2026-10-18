@@ -35,19 +35,25 @@ jobs:
 
       # A merged pull request's own CI run already formatted, linted, compiled and tested the tree
       # this master run would check. This step skips those four steps when, and only when, this
-      # commit is a PR's merge commit, the PR head has the identical tree, and a ci.yml run on that
-      # head concluded success. Everything else runs them: a direct push, a PR merged while behind
-      # master (its tree differs), a failed, missing or cancelled PR run, and any API error. The
-      # owner accepted the cost on 2026-10-18: master no longer tries a second shuffle seed per merge.
-      # Install and the image build still run: they write the pip and gha layer caches that PR runs
+      # commit is a PR's merge commit, the PR head has the identical tree, and the `build` job of a
+      # ci.yml pull_request run on that head succeeded. It reads the job, not the run, because
+      # auto-merge dispatches this run from inside the PR run, before that run has concluded.
+      # Everything else runs them: a direct push, a PR merged while behind master (its tree
+      # differs), a failed, missing or cancelled PR job, and any API error. The step runs only on a
+      # push or on auto-merge's dispatch (GITHUB_TOKEN, so the actor is github-actions[bot]). A
+      # manual dispatch always runs the checks and is the way to get an extra shuffle seed. The
+      # owner accepted the cost on 2026-10-18: master no longer tries a second seed per merge.
+      # Install and the image build always run: they fill the pip and gha layer caches that PR runs
       # restore from master's scope.
       - name: Check whether ci.yml already tested this tree
         id: tested
-        if: github.event_name != 'pull_request'
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.triggering_actor == 'github-actions[bot]')
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
           SHA: ${{ github.sha }}
+          # The jobs API's name for this job: its id, since it sets no `name:`.
+          JOB_NAME: build
         run: |
           tested=false
           reason="no merged pull request has this commit as its merge commit"
@@ -62,13 +68,23 @@ jobs:
             if [ -z "$merged_tree" ] || [ "$merged_tree" != "$head_tree" ]; then
               reason="#$num's head tree differs from the merged tree"
             else
-              runs=$(gh api "repos/$REPO/actions/runs?head_sha=$head&event=pull_request&per_page=100" \
-                --jq '[.workflow_runs[] | select(.path == ".github/workflows/ci.yml" and .conclusion == "success")] | length') || runs=""
-              if [ "${runs:-0}" -gt 0 ] 2>/dev/null; then
-                tested=true
-                reason="#$num's head ${head:0:7} has the same tree and its ci.yml run succeeded"
+              if ! ids=$(gh api "repos/$REPO/actions/runs?head_sha=$head&event=pull_request&per_page=100" \
+                --jq '.workflow_runs[] | select(.path == ".github/workflows/ci.yml") | .id'); then
+                reason="the ci.yml run lookup for #$num's head ${head:0:7} failed"
               else
-                reason="#$num's head ${head:0:7} has no successful ci.yml pull_request run (${runs:-lookup failed})"
+                reason="no successful '$JOB_NAME' job on #$num's head ${head:0:7}"
+                for id in $ids; do
+                  if ! count=$(gh api "repos/$REPO/actions/runs/$id/jobs?filter=latest&per_page=100" \
+                    --jq "[.jobs[] | select(.name == \"$JOB_NAME\" and .conclusion == \"success\")] | length"); then
+                    reason="the job lookup for run $id on #$num's head ${head:0:7} failed"
+                    continue
+                  fi
+                  if [ "$count" -gt 0 ] 2>/dev/null; then
+                    tested=true
+                    reason="#$num's head ${head:0:7} has the same tree and its '$JOB_NAME' job passed in run $id"
+                    break
+                  fi
+                done
               fi
             fi
           fi
