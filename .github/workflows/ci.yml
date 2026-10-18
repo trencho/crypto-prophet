@@ -55,7 +55,17 @@ jobs:
         # coverage number, so there is no measured baseline to ratchet against, and a threshold
         # picked from the first run is either trivially loose or fails CI on a figure nobody has
         # read. --cov=src scopes it to the application; tests and definitions.py are not subject.
-        run: python -m pytest -q --cov=src --cov-report=term
+        #
+        # Every run shuffles the test order (pytest-randomly), seeded by the run id, so a re-run
+        # replays the same order and cannot clear an order failure: fix the test, or dispatch CI for
+        # a new seed. The log and the run summary name the seed. Reproduce locally with
+        # `python -m pytest -p randomly --randomly-seed=<seed>`.
+        env:
+          SEED: ${{ github.run_id }}
+        run: |
+          echo "Shuffled test order, seed $SEED"
+          echo "Shuffled test order, seed \`$SEED\`" >> "$GITHUB_STEP_SUMMARY"
+          python -m pytest -q -p randomly --randomly-seed="$SEED" --cov=src --cov-report=term
 
       # The Dockerfile is the one artifact nothing above exercises. Every step here runs against
       # the checkout under the runner's own interpreter; none of them proves an image can be built
