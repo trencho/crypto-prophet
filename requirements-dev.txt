@@ -3,9 +3,9 @@
 # installs requirements.txt alone, so nothing here reaches the production image.
 #
 # security-scan.yml compiles its tree from BOTH files at scan time, so OSV still sees these.
-black==26.10.0
+black==26.10.1
 httpx==0.28.1
 pytest==9.1.1
 pytest-cov==7.1.0
 pytest-randomly==5.0.0
-ruff==0.16.10
+ruff==0.17.1
