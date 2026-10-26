@@ -24,7 +24,7 @@ services:
       - 'traefik.http.routers.fastapi.tls.certresolver=letsencrypt'
 
   traefik:
-    image: traefik:v3.7.14
+    image: traefik:v3.7.16
     ports:
       - '80:80'
       - '443:443'
